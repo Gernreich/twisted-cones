@@ -274,23 +274,14 @@ function slice(s,u,n){const r=rho(s.taper,uf(s,'fT',u),s.pw),uS=uf(s,'fS',u),loc
   return loc.map(([x,y])=>{const a=x-mx+s.gap;return [a*c-y*si,a*si+y*c];});}
 const cen=pts=>{let x=0,y=0;pts.forEach(q=>{x+=q[0];y+=q[1];});return [x/pts.length,y/pts.length];};
 const area=p=>{let a=0;for(let i=0;i<p.length;i++){const q=p[i],w=p[(i+1)%p.length];a+=q[0]*w[1]-w[0]*q[1];}return a/2;};
-// the slice moved in by w all round (a mitred offset), or null when the wall would fill it or fold over itself
-function inset(p,w){const n=p.length,A=area(p),sg=A>0?1:-1,out=[];
-  for(let i=0;i<n;i++){const a=p[(i+n-1)%n],b=p[i],c=p[(i+1)%n];
-    let e1=[b[0]-a[0],b[1]-a[1]],e2=[c[0]-b[0],c[1]-b[1]];const l1=Math.hypot(...e1)||1,l2=Math.hypot(...e2)||1;
-    const n1=[-sg*e1[1]/l1,sg*e1[0]/l1],n2=[-sg*e2[1]/l2,sg*e2[0]/l2];let m=[n1[0]+n2[0],n1[1]+n2[1]];const lm=Math.hypot(...m)||1;m=[m[0]/lm,m[1]/lm];
-    const d=w/Math.max(0.25,m[0]*n1[0]+m[1]*n1[1]);out.push([b[0]+m[0]*d,b[1]+m[1]*d]);}
-  const B=area(out);if(Math.sign(B)!==sg||Math.abs(B)<w*w)return null;
-  const X=(p1,p2,p3,p4)=>{const d=(p2[0]-p1[0])*(p4[1]-p3[1])-(p2[1]-p1[1])*(p4[0]-p3[0]);if(!d)return false;
-    const t=((p3[0]-p1[0])*(p4[1]-p3[1])-(p3[1]-p1[1])*(p4[0]-p3[0]))/d,v=((p3[0]-p1[0])*(p2[1]-p1[1])-(p3[1]-p1[1])*(p2[0]-p1[0]))/d;return t>0&&t<1&&v>0&&v<1;};
-  for(let i=0;i<n;i++)for(let j=i+2;j<n;j++){if(i===0&&j===n-1)continue;if(X(out[i],out[(i+1)%n],out[j],out[(j+1)%n]))return insetRadial(p,w);}
-  return out;}
-// corners fold a mitred offset over itself; then walk in from the centre along each vertex's ray to the last point a full wall from the outline
+// the slice moved in by w all round: one method on every slice, so the inner surface runs smoothly from slice to slice
+const inset=(p,w)=>insetRadial(p,w);
+// walk in from the centre along each vertex's ray to the last point a full wall from the outline
 function insetRadial(p,w){const n=p.length,c=cen(p);
   const dist=(x,y)=>{let m=Infinity;for(let i=0;i<n;i++){const a=p[i],b=p[(i+1)%n],ex=b[0]-a[0],ey=b[1]-a[1],L=ex*ex+ey*ey||1;
     let t=((x-a[0])*ex+(y-a[1])*ey)/L;t=t<0?0:t>1?1:t;const dx=x-a[0]-t*ex,dy=y-a[1]-t*ey,d=dx*dx+dy*dy;if(d<m)m=d;}return Math.sqrt(m);};
   if(dist(c[0],c[1])<w*1.05)return null;
-  const out=p.map(q=>{let lo=0,hi=1;for(let k=0;k<18;k++){const t=(lo+hi)/2;dist(c[0]+(q[0]-c[0])*t,c[1]+(q[1]-c[1])*t)>=w?lo=t:hi=t;}return [c[0]+(q[0]-c[0])*lo,c[1]+(q[1]-c[1])*lo];});
+  const out=p.map(q=>{let lo=0,hi=1;for(let k=0;k<13;k++){const t=(lo+hi)/2;dist(c[0]+(q[0]-c[0])*t,c[1]+(q[1]-c[1])*t)>=w?lo=t:hi=t;}return [c[0]+(q[0]-c[0])*lo,c[1]+(q[1]-c[1])*lo];});
   return Math.abs(area(out))<w*w?null:out;}
 // hollow: the cavity follows the slices up while the inset is sound, and stops at least one wall below the top
 function cavity(s,rings){if(!s.wall)return [];const zTop=rings[rings.length-1][0],inner=[];
