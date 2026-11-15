@@ -467,10 +467,27 @@ function stlFor(s){const g=geomFor(s),grp=groupFor(s,g),tris=[];grp.updateMatrix
   let o=84;for(const [a,b,c] of tris){const u=[b[0]-a[0],b[1]-a[1],b[2]-a[2]],w=[c[0]-a[0],c[1]-a[1],c[2]-a[2]];let nx=u[1]*w[2]-u[2]*w[1],ny=u[2]*w[0]-u[0]*w[2],nz=u[0]*w[1]-u[1]*w[0];const L=Math.hypot(nx,ny,nz)||1;
     [nx/L,ny/L,nz/L,...a,...b,...c].forEach(x=>{dv.setFloat32(o,x,true);o+=4;});dv.setUint16(o,0,true);o+=2;}
   return [buf,tris.length];}
-document.getElementById('stl').onclick=()=>{const [buf,n]=stlFor(st),name='twisted-cone-'+nameOf(st).toLowerCase().replace(/[^a-z0-9.]+/g,'-').replace(/^-|-$/g,'')+'.stl';
-  const url=URL.createObjectURL(new Blob([buf],{type:'model/stl'})),a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),5000);
-  const here=/github\.io$/.test(location.hostname)||location.protocol==='file:';
-  document.getElementById('stlStatus').textContent=here?`${name} · ${n} triangles · ${(buf.byteLength/1048576).toFixed(1)} MiB`:'Downloads are blocked here; use gernreich.github.io/twisted-cones';};
+// a zip holding one stored (uncompressed) file: the private claude.ai page may only hand over zips, not .stl
+const CRC=(()=>{const t=new Uint32Array(256);for(let n=0;n<256;n++){let c=n;for(let k=0;k<8;k++)c=c&1?0xEDB88320^(c>>>1):c>>>1;t[n]=c>>>0;}return t;})();
+function zipOne(name,bytes){let c=0xFFFFFFFF;for(let i=0;i<bytes.length;i++)c=CRC[(c^bytes[i])&255]^(c>>>8);c=(c^0xFFFFFFFF)>>>0;
+  const nm=new TextEncoder().encode(name),L=30+nm.length,C=46+nm.length,out=new Uint8Array(L+bytes.length+C+22),dv=new DataView(out.buffer);
+  const head=(o,central)=>{dv.setUint32(o,central?0x02014b50:0x04034b50,true);let q=o+4;if(central){dv.setUint16(q,20,true);q+=2;}
+    dv.setUint16(q,20,true);dv.setUint16(q+2,0,true);dv.setUint16(q+4,0,true);dv.setUint16(q+6,0,true);dv.setUint16(q+8,0x21,true);
+    dv.setUint32(q+10,c,true);dv.setUint32(q+14,bytes.length,true);dv.setUint32(q+18,bytes.length,true);dv.setUint16(q+22,nm.length,true);dv.setUint16(q+24,0,true);
+    if(central){dv.setUint16(q+26,0,true);dv.setUint16(q+28,0,true);dv.setUint16(q+30,0,true);dv.setUint32(q+32,0,true);dv.setUint32(q+36,0,true);out.set(nm,q+40);}else out.set(nm,q+26);};
+  head(0,false);out.set(bytes,L);head(L+bytes.length,true);
+  const e=L+bytes.length+C;dv.setUint32(e,0x06054b50,true);dv.setUint16(e+8,1,true);dv.setUint16(e+10,1,true);dv.setUint32(e+12,C,true);dv.setUint32(e+16,L+bytes.length,true);
+  return out;}
+let downloads=null;
+if(window.claude&&claude.use)claude.use('downloads').then(d=>{downloads=d;}).catch(()=>{});
+document.getElementById('stl').onclick=async()=>{const [buf,n]=stlFor(st),base='twisted-cone-'+nameOf(st).toLowerCase().replace(/[^a-z0-9.]+/g,'-').replace(/^-|-$/g,''),stat=document.getElementById('stlStatus');
+  const info=`${n} triangles · ${(buf.byteLength/1048576).toFixed(1)} MiB`;
+  if(downloads){const zip=zipOne(base+'.stl',new Uint8Array(buf));
+    try{await downloads.save({filename:base+'.zip',data:new Blob([zip])});stat.textContent=`${base}.zip (the STL inside) · ${info}`;}
+    catch(e){stat.textContent=e&&e.code==='declined'?'Download cancelled':e&&e.code==='rate_limited'?'A download is already waiting; try again in a moment':'Downloads are not available here; use gernreich.github.io/twisted-cones';}
+    return;}
+  const url=URL.createObjectURL(new Blob([buf],{type:'model/stl'})),a=document.createElement('a');a.href=url;a.download=base+'.stl';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),5000);
+  stat.textContent=`${base}.stl · ${info}`;};
 
 // ---------- contact sheets ----------
 const tscene=makeScene(),tcam=new THREE.OrthographicCamera(-1,1,1,-1,1,20000),tholder=new THREE.Group();tscene.add(tholder);
