@@ -280,9 +280,10 @@ function insetRadial(p,w){const n=p.length,c=cen(p);
   if(dist(c[0],c[1])<w*1.05)return null;
   const out=p.map(q=>{let lo=0,hi=1;for(let k=0;k<13;k++){const t=(lo+hi)/2;dist(c[0]+(q[0]-c[0])*t,c[1]+(q[1]-c[1])*t)>=w?lo=t:hi=t;}return [c[0]+(q[0]-c[0])*lo,c[1]+(q[1]-c[1])*lo];});
   return Math.abs(area(out))<w*w?null:out;}
-// hollow: the cavity follows the slices up while the inset is sound, and stops at least one wall below the top
-function cavity(s,rings){if(!s.wall)return [];const zTop=rings[rings.length-1][0],inner=[];
-  for(const [z,p] of rings){if(z>zTop-s.wall)break;const q=inset(p,s.wall);if(!q)break;inner.push([z,q]);}
+// hollow: the cavity follows the slices up while the inset is sound; on a cut-off it runs out through the cut (open top),
+// otherwise it stops at least one wall below the top
+function cavity(s,rings){if(!s.wall)return [];const zTop=rings[rings.length-1][0],open=(s.top??100)<100,inner=[];
+  for(const [z,p] of rings){if(!open&&z>zTop-s.wall)break;const q=inset(p,s.wall);if(!q)break;inner.push([z,q]);}
   return inner.length>1?inner:[];}
 function volumes(s){const NZ=240,NT=96,rings=[];for(let i=0;i<=NZ;i++){const u=i/NZ;rings.push([u*HT(s),slice(s,Math.min(u,0.99999),NT)]);}
   const V=rs=>{let v=0;for(let i=0;i<rs.length-1;i++)v+=(Math.abs(area(rs[i][1]))+Math.abs(area(rs[i+1][1])))/2*(rs[i+1][0]-rs[i][0]);return v;};
@@ -319,7 +320,7 @@ function warnings(s,far){const w=[];
     for(let i=0;i<40&&!hit;i++){const A=slice(s,i/40,96),ca=Math.cos(TAU/s.copies),sa=Math.sin(TAU/s.copies);
       for(const q of A){if(Math.hypot(q[0],q[1])<0.5)continue;if(inside([q[0]*ca-q[1]*sa,q[0]*sa+q[1]*ca],A)){hit=true;break;}}}
     if(hit)w.push('The copies overlap each other here, so as a cut stack they would fuse into one piece per layer.');}
-  if(s.wall)w.push('Hollow: open underneath (a base closes it), sealed at the top where the slice gets too thin for the wall; the tip is solid from there up.');
+  if(s.wall)w.push((s.top??100)<100?'Hollow: open underneath (a base closes it) and open through the cut, unless the slice gets too thin for the wall first.':'Hollow: open underneath (a base closes it), sealed at the top where the slice gets too thin for the wall; the tip is solid from there up.');
   return w.join(' ');}
 
 if(!window.THREE){document.querySelector('.stage').innerHTML='<p class="err">The 3D library did not load, so nothing can be drawn. Reload the page to try again.</p>';return;}
@@ -360,8 +361,10 @@ function geomFor(s){
   if(inner.length){
     surf(inner,true);const o2=(NZ+1)*NT,m=inner.length-1;
     for(let j=0;j<NT;j++){const a=j,b=(j+1)%NT,c=o2+j,d=o2+(j+1)%NT;idx.push(a,c,d,a,d,b);}   // ring between outer and inner at the base
+    if(m===NZ){for(let j=0;j<NT;j++){const a=NZ*NT+j,b=NZ*NT+(j+1)%NT,c=o2+m*NT+j,d=o2+m*NT+(j+1)%NT;idx.push(a,d,c,a,b,d);}}  // open top: a ring like the base
+    else{
     {const [z,p]=inner[m],c=cen(p),ci=verts.length/3;verts.push(c[0],c[1],z);for(let j=0;j<NT;j++)idx.push(ci,o2+m*NT+(j+1)%NT,o2+m*NT+j);} // ceiling
-    {const [z,p]=rings[NZ],c=cen(p),ci=verts.length/3;verts.push(c[0],c[1],z);for(let j=0;j<NT;j++)idx.push(ci,NZ*NT+j,NZ*NT+(j+1)%NT);}   // top
+    {const [z,p]=rings[NZ],c=cen(p),ci=verts.length/3;verts.push(c[0],c[1],z);for(let j=0;j<NT;j++)idx.push(ci,NZ*NT+j,NZ*NT+(j+1)%NT);}}  // top
   }else{
     [0,NZ].forEach(i=>{const [z,p]=rings[i],c=cen(p),ci=verts.length/3;verts.push(c[0],c[1],z);
       for(let j=0;j<NT;j++)i?idx.push(ci,i*NT+j,i*NT+(j+1)%NT):idx.push(ci,i*NT+(j+1)%NT,i*NT+j);});
