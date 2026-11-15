@@ -32,7 +32,7 @@ fn centre_radius(z: f64) -> f64 { 15.0 - 14.0 * (z - 95.0) / 1000.0 }
 
 // ---------- the variations ----------
 #[derive(Clone, Copy)]
-struct V { shape: &'static str, tip: &'static str, twist: &'static str, turns: f64, taper: &'static str, copies: u32, gap: f64, scale: f64 }
+struct V { shape: &'static str, tip: &'static str, t0: f64, t1: f64, taper: &'static str, copies: u32, gap: f64, scale: f64 }
 fn unit1(shape: &str, phi: f64) -> (f64, f64) {
     let (c, s) = (phi.cos(), phi.sin());
     match shape {
@@ -53,12 +53,11 @@ fn unit(v: &V, phi: f64, u: f64) -> (f64, f64) {
 }
 fn rho(taper: &str, u: f64) -> f64 {
     let r0 = 16.33;
-    match taper { "cone" => r0 * (1.0 - u), "exp" => r0 * 100f64.powf(-u), "bell" => r0 * (1.0 - u).powf(2.5), "swell" => r0 * (1.0 - u) * (1.0 + 3.0 * u), _ => panic!() }
+    match taper { "cone" => r0 * (1.0 - u), "exp" => r0 * 100f64.powf(-u), "bell" => r0 * (1.0 - u).powf(2.5), "swell" => r0 * (1.0 - u) * (1.0 + 3.0 * u),
+        "hyper" => r0 / (1.0 + 9.0 * u), "ellip" => r0 * (1.0 - u * u).sqrt(), "cos" => r0 * (PI * u / 2.0).cos(), _ => panic!() }
 }
-fn theta(v: &V, u: f64) -> f64 {
-    let f = match v.twist { "linear" => u, "accel" => u * u, "decel" => 1.0 - (1.0 - u) * (1.0 - u), "reverse" => if u < 0.5 { u } else { 1.0 - u }, _ => panic!() };
-    TAU * (-0.095 + v.turns * f)
-}
+// twist rate runs steadily from t0 to t1 turns per full height
+fn theta(v: &V, u: f64) -> f64 { TAU * (-0.095 + v.t0 * u + (v.t1 - v.t0) * u * u / 2.0) }
 fn slice(v: &V, u: f64, n: usize) -> Vec<(f64, f64)> {
     let r = rho(v.taper, u);
     let loc: Vec<(f64, f64)> = (0..n).map(|j| { let (x, y) = unit(v, j as f64 / n as f64 * TAU, u); (x * r, y * r) }).collect();
@@ -113,7 +112,7 @@ fn main() {
 
     println!("-- variations");
     // the variations' base cone turns exactly once (the sweeps turned tau per 1000 of rise, 1.166 turns)
-    let b = V { shape: "ellT", tip: "same", twist: "linear", turns: 1.0, taper: "cone", copies: 1, gap: 0.0, scale: 1.0 };
+    let b = V { shape: "ellT", tip: "same", t0: 1.0, t1: 1.0, taper: "cone", copies: 1, gap: 0.0, scale: 1.0 };
     check("base turns, base to tip", (theta(&b, 1.0) - theta(&b, 0.0)) / TAU, 1.0, 1e-12);
     let cases: Vec<(&str, V, f64, f64)> = vec![
         ("0a spiral circle", V { shape: "circle", ..b }, 0.0, 32.66),
@@ -124,8 +123,8 @@ fn main() {
         ("8 swell", V { taper: "swell", ..b }, 0.0, 50.283),
         ("10a gap 4", V { gap: 4.0, ..b }, 4.0, 40.221),
         ("ellipse to circle", V { tip: "circle", ..b }, 0.0, 37.713),
-        ("triangle to circle, speeds up, 3 turns", V { shape: "triangle", tip: "circle", twist: "accel", turns: 3.0, ..b }, 0.0, 28.284),
-        ("three copies, 5 turns", V { copies: 3, turns: 5.0, ..b }, 0.0, 37.713),
+        ("triangle to circle, start 0 end 5 turns", V { shape: "triangle", tip: "circle", t0: 0.0, t1: 5.0, ..b }, 0.0, 28.284),
+        ("three copies, 5 turns", V { copies: 3, t0: 5.0, t1: 5.0, ..b }, 0.0, 37.713),
     ];
     for (name, v, near, far) in &cases {
         let (n, f) = reach(v);
@@ -133,7 +132,19 @@ fn main() {
         check(&format!("{name}: farthest from axis"), f * v.scale, *far, 1e-3);
         let _ = v.copies;
     }
-    check("6 reverses: turns at the midpoint", (theta(&V { twist: "reverse", ..b }, 0.5) / TAU) + 0.095, 0.5, 1e-12);
+    // start 0 / end 2 is the old "speeds up" (turn = u^2), start 2 / end 0 the old "slows down"
+    let (mut a, mut d) = (0f64, 0f64);
+    for i in 0..=1000 { let u = i as f64 / 1000.0;
+        a = a.max((theta(&V { t0: 0.0, t1: 2.0, ..b }, u) - TAU * (-0.095 + u * u)).abs());
+        d = d.max((theta(&V { t0: 2.0, t1: 0.0, ..b }, u) - TAU * (-0.095 + 1.0 - (1.0 - u) * (1.0 - u))).abs()); }
+    check("start 0 end 2 == turn u^2, worst gap", a, 0.0, 1e-12);
+    check("start 2 end 0 == turn 1-(1-u)^2, worst gap", d, 0.0, 1e-12);
+    check("start 0 end 5: total turns", (theta(&V { t0: 0.0, t1: 5.0, ..b }, 1.0) - theta(&b, 0.0)) / TAU, 2.5, 1e-12);
+    // tapers: base size and size at the tip
+    for (t, tip) in [("cone", 0.0), ("exp", 0.1633), ("bell", 0.0), ("swell", 0.0), ("hyper", 1.633), ("ellip", 0.0), ("cos", 0.0)] {
+        check(&format!("taper {t}: size at base"), rho(t, 0.0), 16.33, 1e-12);
+        check(&format!("taper {t}: size at tip"), rho(t, 1.0), tip, 1e-9);
+    }
     check("12a layers of 3 mm at 1/4 scale", (ZT * 0.25 / 3.0).floor(), 97.0, 0.0);
     check("12b layers of 3 mm at full scale", (ZT / 3.0).floor(), 388.0, 0.0);
 
