@@ -72,6 +72,21 @@ nav.tabs button:focus-visible{outline:2px solid var(--accent);outline-offset:2px
 .finish input{accent-color:var(--accent);margin:0}
 .baseN input{flex:1;min-width:0;accent-color:var(--accent)}
 .curhead{display:flex;align-items:center;gap:8px}
+.gsec{display:grid;gap:9px;padding-bottom:12px;border-bottom:1px solid var(--grid)}
+.gsec:last-of-type{border-bottom:0;padding-bottom:0}
+.ghead{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.ghead h4{margin:0;font:600 13px var(--sans);letter-spacing:.02em}
+.reset{font-size:12px;padding:3px 7px;color:var(--muted)}
+.ic{display:grid;justify-items:center;gap:3px;padding:5px 6px 4px;min-width:62px}
+.ic svg{width:34px;height:34px;display:block}
+.ic span{font:500 10.5px var(--mono);line-height:1.15;text-align:center}
+.ic .fillc{fill:currentColor;fill-opacity:.28;stroke:currentColor;stroke-width:1.4;stroke-linejoin:round}
+.ic .axis{stroke:currentColor;stroke-opacity:.45;stroke-width:1;stroke-dasharray:2 2}
+.val{font:600 12.5px var(--mono);color:var(--fg);white-space:nowrap;min-width:9ch;text-align:right}
+.adv{font:12px var(--mono);color:var(--muted);flex-basis:100%}
+.adv summary{cursor:pointer;width:max-content}
+.allrow{display:flex;justify-content:flex-end}
+.baseN .lo{min-width:11ch}.baseN .hi{min-width:10ch}.val{min-width:12ch}
 .star{font-size:22px;line-height:1;background:none;border:0;padding:2px 4px;color:var(--accent);cursor:pointer}
 .star:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px}
 .dual{position:relative;flex:1;min-width:0;height:22px}
@@ -121,8 +136,8 @@ body{font-size:14px;line-height:1.4}
       </div>
     </div>
     <aside class="side">
-      <div class="row" id="stretchRow"><span>x,y ×</span><div class="opts" role="group" aria-label="Stretch x and y">
-        <label class="baseN" for="kxy">width <input id="kxy" type="range" min="0" max="300" step="1" value="141"> <output id="kxyout">2.6</output></label>
+      <div class="row" id="stretchRow"><span>width</span><div class="opts" role="group" aria-label="Width, x and y">
+        <label class="baseN" for="kxy"><span class="lo">narrow</span> <input id="kxy" type="range" min="0" max="300" step="1" value="141"> <span class="hi">wide</span> <b class="val">×<output id="kxyout">2.6</output></b></label>
       </div></div>
       <div id="sheetSide">
         <h3 id="snum"></h3>
@@ -196,9 +211,8 @@ const SHAPES=[['circle','Circle'],['ellT','Ellipse 1:2'],['ellR','Ellipse outwar
 const GROUPS=[
  {key:'shape',label:'at base',opts:SHAPES},
  {key:'tip',label:'at tip',opts:[['same','Same'],...SHAPES]},
- {key:'dir',label:'direction',opts:[[1,'Counter-clockwise'],[-1,'Clockwise']]},
 // twist rate at the base and at the tip, in turns per full height; the rate changes steadily in between
- {key:'taper',label:'taper',opts:[['cone','Linear (cone)'],['exp','Geometric (horn)'],['swell','Parabolic (swell)'],['hyper','Hyperbolic'],['hyperC','Closed hyperbola'],['hyperT','Hyperbola turned τ/4'],['log','Logarithmic'],['logT','Log turned τ/4'],['ellip','Elliptic'],['cos','Cosine']]},
+ {key:'taper',label:'taper',opts:[['cone','Linear (cone)'],['exp','Geometric (horn)'],['swell','Parabolic (swell)'],['hyper','Hyperbolic'],['hyperC','Closed hyperbola'],['hyperT','Hyperbola turned τ/4'],['log','Logarithmic'],['logT','Log turned τ/4'],['ellip','Elliptic'],['cos','Cosine'],['pow','Power']]},
  {key:'copies',label:'copies',opts:[[1,'1'],[2,'2'],[3,'3'],[4,'4'],[5,'5']]},
 ];
 const BASE={shape:'ellT',tip:'same',t0:1,t1:1,taper:'cone',copies:1,gap:0,wall:0,build:'smooth',baseOn:false,baseN:1,dir:1,pw:2.5,top:100,fT:false,fW:false,fS:false};
@@ -442,13 +456,18 @@ function rebuild(fromPreset){
   document.getElementById('pname').textContent=nameOf(st);
   if(typeof markFav==='function')markFav();
   {const we=document.getElementById('wall');we.value=st.wall;document.getElementById('wallout').textContent=st.wall?st.wall.toFixed(1)+' mm':'solid';}
-  {const T=turnsOf(st),b=spreadOf(st);document.getElementById('tt').value=T;document.getElementById('tb').value=b;document.getElementById('ttout').textContent=+T.toFixed(2);
-   document.getElementById('tbout').textContent=Math.abs(b)<0.001?'even':`${b<0?'slows':'speeds up'}: ${+st.t0.toFixed(2)} at the base → ${+st.t1.toFixed(2)} at the tip, turns per height`;}
-  {const ge=document.getElementById('gap');ge.value=st.gap;document.getElementById('gapout').textContent=st.gap?st.gap+' mm':'touching';}
-  {const te=document.getElementById('top');te.value=st.top;document.getElementById('topout').textContent=st.top+'%';['fT','fW','fS'].forEach(k=>{const c=document.getElementById(k);c.checked=st[k]!==false;c.disabled=st.top>=100;});}
-  {const pe=document.getElementById('pw');pe.value=st.pw;document.getElementById('pwout').textContent=st.pw+(st.taper==='pow'?' (in use)':' (move to use)');}
-  {const on=!!st.baseOn;document.getElementById('base-on').setAttribute('aria-pressed',on);document.getElementById('base-off').setAttribute('aria-pressed',!on);
-   [1,2,3,4,5].forEach(n=>document.getElementById('bl-'+n).setAttribute('aria-pressed',on&&st.baseN===n));}
+  const tx=(id,t)=>{const e=document.getElementById(id);if(e)e.textContent=t;};
+  {const T=turnsOf(st),b=spreadOf(st),sg=st.dir===-1?-1:1;document.getElementById('tt').value=sg*T;document.getElementById('tb').value=b;
+   tx('ttout',T?`${+T.toFixed(2)} turn${T===1?'':'s'} ${sg<0?'↻':'↺'}`:'none');
+   tx('tbout',Math.abs(b)<0.001?'even':`${+st.t0.toFixed(2)} → ${+st.t1.toFixed(2)}`);}
+  {const ge=document.getElementById('gap');ge.value=st.gap;tx('gapout',st.gap?st.gap+' mm':'0 mm');}
+  {const te=document.getElementById('top');te.value=st.top;tx('topout',st.top+'%');const cut=st.top<100,on=['fT','fW','fS'].map(k=>st[k]!==false);
+   ['fT','fW','fS'].forEach((k,i)=>{const c=document.getElementById(k);c.checked=on[i];c.disabled=!cut;});
+   const fa=document.getElementById('fAll');fa.checked=on.every(x=>x);fa.indeterminate=on.some(x=>x)&&!fa.checked;fa.disabled=!cut;
+   fa.closest('.finish').style.opacity=cut?'':'.5';}
+  {const pe=document.getElementById('pw');pe.value=st.pw;tx('pwout',String(st.pw));document.getElementById('powRow').hidden=st.taper!=='pow';
+   const pi=GROUPS.find(g=>g.key==='taper').opts.findIndex(o=>o[0]==='pow'),pb=document.getElementById('o-taper-'+pi);pb.querySelector('svg').outerHTML=taperIcon('pow',st.pw);}
+  [0,1,2,3,4,5].forEach(n=>document.getElementById('base-'+n).setAttribute('aria-pressed',n?(!!st.baseOn&&st.baseN===n):!st.baseOn));
   const [rows,far]=stats(st);
   document.getElementById('stats').innerHTML=rows.map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td></tr>`).join('');
   document.getElementById('warn').textContent=warnings(st,far);
@@ -494,47 +513,73 @@ gl.addEventListener('pointerup',up);gl.addEventListener('pointercancel',up);
 gl.addEventListener('wheel',e=>{e.preventDefault();const r=gl.getBoundingClientRect(),mx=e.clientX-r.left-W/2,my=e.clientY-r.top-H/2;
   const z2=Math.max(.3,Math.min(40,zoom*Math.exp(-e.deltaY*0.0015))),k=z2/zoom;panX=mx-(mx-panX)*k;panY=my-(my-panY)*k;zoom=z2;draw();},{passive:false});
 
-// ---------- mixer ----------
+// ---------- mixer: five groups (Shape, Twist, Taper, Copies, Print), each with a reset ----------
 const mixer=document.getElementById('mixer');
-GROUPS.forEach(g=>{const row=document.createElement('div');row.className='row';
-  row.innerHTML=`<span>${g.label}</span><div class="opts" role="group" aria-label="${g.label}"></div>`;
-  const box=row.lastElementChild;
-  g.opts.forEach(([v,t],i)=>{const b=document.createElement('button');b.id=`o-${g.key}-${i}`;b.textContent=t;b.setAttribute('aria-pressed','false');
-    b.onclick=()=>{st[g.key]=v;rebuild(false);};box.appendChild(b);});
-  mixer.appendChild(row);});
-// twist as total turns plus a spread: the rate runs linearly from T(1 − b) at the base to T(1 + b) at the tip,
-// so b = −1 slows to a stop at the tip, 0 is even, +1 starts still and speeds up; the state keeps t0 and t1
+const SHORT={cone:'Cone',exp:'Horn',swell:'Swell',hyper:'Hyperbolic',hyperC:'Closed hyp.',hyperT:'Hyp. τ/4',log:'Log',logT:'Log τ/4',ellip:'Elliptic',cos:'Cosine',pow:'Power'};
+// little pictures: a slice outline with the z axis dashed on its left; a taper's side profile up the axis
+function shapeIcon(k){const pts=[];for(let j=0;j<64;j++)pts.push(unit1(k,j/64*TAU));
+  let x0=Infinity,x1=-Infinity,y0=Infinity,y1=-Infinity;pts.forEach(([x,y])=>{x0=Math.min(x0,x);x1=Math.max(x1,x);y0=Math.min(y0,y);y1=Math.max(y1,y);});
+  const sc=30/Math.max(x1-x0,y1-y0),cx=(x0+x1)/2,cy=(y0+y1)/2,d=pts.map(([x,y],i)=>(i?'L':'M')+(20+(x-cx)*sc).toFixed(1)+' '+(20-(y-cy)*sc).toFixed(1)).join('')+'Z';
+  const ax=(20+(x0-cx)*sc).toFixed(1);
+  return `<svg viewBox="0 0 40 40" aria-hidden="true"><line class="axis" x1="${ax}" y1="2" x2="${ax}" y2="38"/><path class="fillc" d="${d}"/></svg>`;}
+function taperIcon(t,pw){const n=40,f=[];let m=0;for(let i=0;i<=n;i++){const v=rho(t,Math.min(i/n,0.9999),pw)/R0;f.push(v);m=Math.max(m,v);}
+  const d='M5 37'+f.map((v,i)=>'L'+(5+30*v/m).toFixed(1)+' '+(37-34*i/n).toFixed(1)).join('')+'L5 3Z';
+  return `<svg viewBox="0 0 40 40" aria-hidden="true"><line class="axis" x1="5" y1="1" x2="5" y2="39"/><path class="fillc" d="${d}"/></svg>`;}
+function section(id,title,reset){const sec=document.createElement('section');sec.className='gsec';sec.id='sec-'+id;
+  sec.innerHTML=`<div class="ghead"><h4>${title}</h4><button class="reset" type="button" title="Put ${title.toLowerCase()} back to the default" aria-label="Reset ${title.toLowerCase()}">↺ reset</button></div>`;
+  sec.querySelector('.reset').onclick=()=>{reset();rebuild(false);};mixer.appendChild(sec);return sec;}
+const addRow=(sec,label,inner)=>{const row=document.createElement('div');row.className='row';row.innerHTML=`<span>${label}</span><div class="opts">${inner}</div>`;sec.appendChild(row);return row;};
+function choiceRow(sec,key,label,icon){const g=GROUPS.find(x=>x.key===key),row=addRow(sec,label,''),box=row.lastElementChild;box.setAttribute('role','group');box.setAttribute('aria-label',label);
+  g.opts.forEach(([v,t],i)=>{const b=document.createElement('button');b.id=`o-${key}-${i}`;b.type='button';b.setAttribute('aria-pressed','false');b.title=t;
+    if(icon&&icon(v)){b.className='ic';b.innerHTML=icon(v)+`<span>${key==='taper'?SHORT[v]:t}</span>`;}else b.textContent=t;
+    b.onclick=()=>{st[key]=v;rebuild(false);};box.appendChild(b);});return row;}
+const slider=(id,min,max,step,left,right)=>`<label class="baseN" for="${id}"><span class="lo">${left}</span> <input id="${id}" type="range" min="${min}" max="${max}" step="${step}"> <span class="hi">${right}</span> <b class="val" id="${id}out"></b></label>`;
+function setK(k){if(k!==K)setTimeout(renderAllThumbs,0);K=k;document.getElementById('kxy').value=Math.round(100*Math.log10(K/0.1));document.getElementById('kxyout').textContent=K;}
+const pick=(...ks)=>()=>ks.forEach(k=>st[k]=BASE[k]);
+
+// Shape: the slice at the base and at the tip, and the width (the width row is moved in by setMode)
+const secShape=section('shape','Shape',()=>{pick('shape','tip')();setK(1);});
+choiceRow(secShape,'shape','at base',v=>shapeIcon(v));
+choiceRow(secShape,'tip','at tip',v=>v==='same'?'':shapeIcon(v));
+
+// Twist: one signed slider (negative = clockwise) and the spread
+// the rate runs linearly from T(1 − b) at the base to T(1 + b) at the tip; the state keeps t0, t1 and dir
 const turnsOf=s=>(s.t0+s.t1)/2, spreadOf=s=>{const T=turnsOf(s);return T?(s.t1-s.t0)/(2*T):0;};
-{const mk=(id,lab,inner)=>{const row=document.createElement('div');row.className='row';row.innerHTML=`<span>${lab}</span><div class="opts">${inner}</div>`;return row;};
-  const rT=mk('tt','turns','<label class="baseN" for="tt">total <input id="tt" type="range" min="0" max="5" step="0.05" value="1"> <output id="ttout">1</output></label>');
-  const rB=mk('tb','twist spread','<label class="baseN" for="tb">slows <input id="tb" type="range" min="-1" max="1" step="0.05" value="0"> speeds</label><div class="dualout"><span id="tbout">even</span></div>');
-  mixer.querySelector('#o-tip-0').closest('.row').after(rT);rT.after(rB);
-  const apply=()=>{const T=+document.getElementById('tt').value,b=+document.getElementById('tb').value;st.t0=+(T*(1-b)).toFixed(4);st.t1=+(T*(1+b)).toFixed(4);rebuild(false);};
-  document.getElementById('tt').oninput=apply;document.getElementById('tb').oninput=apply;}
-{const row=document.createElement('div');row.className='row';
-  row.innerHTML=`<span>gap</span><div class="opts"><label class="baseN" for="gap">from the axis <input id="gap" type="range" min="0" max="200" step="0.5" value="0"> <output id="gapout">touching</output></label></div>`;
-  mixer.querySelector('#o-copies-0').closest('.row').after(row);
-  const ge=document.getElementById('gap');ge.oninput=()=>{st.gap=+ge.value;rebuild(false);};}
-{const row=document.createElement('div');row.className='row';row.id='powRow';
-  row.innerHTML=`<span>power</span><div class="opts"><label class="baseN" for="pw">(1 − u)^ <input id="pw" type="range" min="0.1" max="5" step="0.1" value="2.5"> <output id="pwout">2.5</output></label></div>`;
-  mixer.querySelector('#o-taper-0').closest('.row').after(row);
-  const pe=document.getElementById('pw');pe.oninput=()=>{st.pw=+pe.value;st.taper='pow';rebuild(false);};}
-{const row=document.createElement('div');row.className='row';
-  row.innerHTML=`<span>cutoff</span><div class="opts"><label class="baseN" for="top">stop at <input id="top" type="range" min="10" max="100" step="1" value="100"> <output id="topout">100%</output></label></div>`;
-  mixer.querySelector('#o-tip-0').closest('.row').after(row);const te=document.getElementById('top');te.oninput=()=>{st.top=+te.value;rebuild(false);};
-  const fin=document.createElement('div');fin.className='finish';fin.innerHTML='<span>finish at the cut:</span>'+[['fT','taper'],['fW','twist'],['fS','shape']].map(([k,n])=>`<label><input type="checkbox" id="${k}"> ${n}</label>`).join('');
-  row.querySelector('.opts').appendChild(fin);['fT','fW','fS'].forEach(k=>{const c=document.getElementById(k);c.onchange=()=>{st[k]=c.checked;rebuild(false);};});}
-{const row=document.createElement('div');row.className='row';
-  row.innerHTML=`<span>hollow</span><div class="opts"><label class="baseN" for="wall">wall <input id="wall" type="range" min="0" max="20" step="0.2" value="0"> <output id="wallout">solid</output></label></div>`;
-  mixer.appendChild(row);const we=document.getElementById('wall');we.oninput=()=>{st.wall=+we.value;rebuild(false);};}
-{const row=document.createElement('div');row.className='row';
-  row.innerHTML=`<span>base</span><div class="opts" role="group" aria-label="Base"><button id="base-off">None</button><button id="base-on">Circular</button>`+
-    `<div class="baseN" role="group" aria-label="Base layers">layers ${[1,2,3,4,5].map(n=>`<button id="bl-${n}" aria-pressed="false">${n} × 3 mm</button>`).join('')}</div></div>`;
-  mixer.appendChild(row);
-  document.getElementById('base-off').onclick=()=>{st.baseOn=false;rebuild(false);};
-  document.getElementById('base-on').onclick=()=>{st.baseOn=true;rebuild(false);};
-  // picking a layer count switches the base on
-  [1,2,3,4,5].forEach(n=>{document.getElementById('bl-'+n).onclick=()=>{st.baseN=n;st.baseOn=true;rebuild(false);};});}
+const secTwist=section('twist','Twist',pick('t0','t1','dir'));
+addRow(secTwist,'turns',slider('tt',-5,5,0.05,'↻ clockwise','counter ↺'));
+addRow(secTwist,'spread',slider('tb',-1,1,0.05,'slows','speeds up'));
+{const apply=()=>{const v=+document.getElementById('tt').value,T=Math.abs(v),b=+document.getElementById('tb').value;if(v)st.dir=v<0?-1:1;
+   st.t0=+(T*(1-b)).toFixed(4);st.t1=+(T*(1+b)).toFixed(4);rebuild(false);};
+ document.getElementById('tt').oninput=apply;document.getElementById('tb').oninput=apply;}
+
+// Taper: the curve the size follows up the height; Power brings its own slider
+const secTaper=section('taper','Taper',pick('taper','pw'));
+choiceRow(secTaper,'taper','curve',v=>taperIcon(v,v==='pow'?st.pw:2.5));
+addRow(secTaper,'power',slider('pw',0.1,5,0.1,'dome','bell')).id='powRow';
+document.getElementById('pw').oninput=e=>{st.pw=+e.target.value;st.taper='pow';rebuild(false);};
+
+// Copies: how many, and how far each sits off the axis
+const secCopies=section('copies','Copies',pick('copies','gap'));
+choiceRow(secCopies,'copies','count');
+addRow(secCopies,'gap',slider('gap',0,200,0.5,'touching','apart'));
+document.getElementById('gap').oninput=e=>{st.gap=+e.target.value;rebuild(false);};
+
+// Print: cut the top off, hollow it out, stand it on a base
+const secPrint=section('print','Print',pick('top','fT','fW','fS','wall','baseOn','baseN'));
+{const row=addRow(secPrint,'height',slider('top',10,100,1,'cut low','full'));
+ const o=row.querySelector('.opts');
+ o.insertAdjacentHTML('beforeend',`<label class="finish"><input type="checkbox" id="fAll"> Finish the shape at the cut (taper, twist and shape all end there)</label>`+
+   `<details class="adv"><summary>Advanced: finish each part separately</summary><div class="finish">`+[['fT','taper'],['fW','twist'],['fS','shape']].map(([k,n])=>`<label><input type="checkbox" id="${k}"> ${n}</label>`).join('')+`</div></details>`);
+ document.getElementById('top').oninput=e=>{st.top=+e.target.value;rebuild(false);};
+ document.getElementById('fAll').onchange=e=>{['fT','fW','fS'].forEach(k=>st[k]=e.target.checked);rebuild(false);};
+ ['fT','fW','fS'].forEach(k=>{document.getElementById(k).onchange=e=>{st[k]=e.target.checked;rebuild(false);};});}
+addRow(secPrint,'hollow',slider('wall',0,20,0.2,'solid','thick wall'));
+document.getElementById('wall').oninput=e=>{st.wall=+e.target.value;rebuild(false);};
+{const row=addRow(secPrint,'base',[0,1,2,3,4,5].map(n=>`<button type="button" id="base-${n}" aria-pressed="false">${n?n*LAYER+' mm':'None'}</button>`).join(''));
+ row.lastElementChild.setAttribute('role','group');row.lastElementChild.setAttribute('aria-label','Circular base thickness, 3 mm layers');
+ [0,1,2,3,4,5].forEach(n=>{document.getElementById('base-'+n).onclick=()=>{if(n){st.baseOn=true;st.baseN=n;}else st.baseOn=false;rebuild(false);};});}
+{const d=document.createElement('div');d.className='allrow';d.innerHTML='<button type="button" id="resetAll">↺ Reset all</button>';mixer.appendChild(d);
+ document.getElementById('resetAll').onclick=()=>{st=Object.assign({},BASE);setK(1);rebuild(false);};}
 
 // ---------- STL: the shape as shown, at true size in mm (no x,y stretch), copies and base included ----------
 function stlFor(s){const g=geomFor(s),grp=groupFor(s,g),tris=[];grp.updateMatrixWorld(true);
@@ -597,7 +642,7 @@ function setBase(sh){baseShape=sh;press('b-',sh==='circle'?'b-circle':'b-ell');q
 document.getElementById('b-ell').onclick=()=>setBase('ellT');
 document.getElementById('b-circle').onclick=()=>setBase('circle');
 function setMode(m){tabMode=m;const mix=m==='mixer';
-  (mix?document.getElementById('mixer'):document.getElementById('sheetPanel')).appendChild(document.getElementById('stretchRow'));
+  (mix?document.getElementById('sec-shape'):document.getElementById('sheetPanel')).appendChild(document.getElementById('stretchRow'));
   ['sub-mix','mixSide','secFav','secSaved','secStart'].forEach(id=>document.getElementById(id).hidden=!mix);
   ['sub-sheet','sheetSide','secSheet'].forEach(id=>document.getElementById(id).hidden=mix);
   document.getElementById('mixSide').style.display=mix?'grid':'none';
