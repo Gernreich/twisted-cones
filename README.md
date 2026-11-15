@@ -28,7 +28,8 @@ It grew in four steps, each kept as its own page:
    are 0.999902 round, so the ellipse is set directly.
 
 The base cone runs from z = 0, where its slice is 32.66 mm across, to a point on
-the z axis at z = 1166.43, turning 1.166 times on the way (τ per 1000 mm of rise).
+the z axis at z = 1166.43, turning once on the way. (The four sweeps turn τ per
+1000 mm of rise, which is 1.166 turns over the same height.)
 At full size it makes 388 layers of 3 mm ply; at ¼ scale, 97.
 
 ## Files

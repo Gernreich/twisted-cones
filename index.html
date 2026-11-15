@@ -173,7 +173,7 @@ body{font-size:14px;line-height:1.4}
 <script>
 (()=>{
 const TAU=2*Math.PI,PI=Math.PI;
-const ZT=95+1000*15/14, R0=16.33, T0=ZT/1000; // base: theta = tau(-0.095 + T0 u) == tau(z-95)/1000
+const ZT=95+1000*15/14, R0=16.33, T0=ZT/1000; // the sweeps turned tau(z-95)/1000 (1.17 turns over ZT); the variations' base is 1 turn
 const css=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
 
 const SHAPES=[['circle','Circle'],['ellT','Ellipse 1:2'],['ellR','Ellipse outward'],['square','Rounded square'],['triangle','Triangle'],['trilobe','Three lobes']];
@@ -181,18 +181,18 @@ const GROUPS=[
  {key:'shape',label:'at base',opts:SHAPES},
  {key:'tip',label:'at tip',opts:[['same','Same'],...SHAPES]},
  {key:'twist',label:'twist',opts:[['linear','Steady'],['accel','Speeds up'],['decel','Slows down'],['reverse','Reverses']]},
- {key:'turns',label:'turns',opts:[[0,'0'],[0.3,'0.3'],[0.5,'0.5'],[T0,'1.17'],[2,'2'],[3,'3'],[5,'5']]},
+ {key:'turns',label:'turns',opts:[[0,'0'],[0.3,'0.3'],[0.5,'0.5'],[1,'1'],[2,'2'],[3,'3'],[5,'5']]},
  {key:'taper',label:'taper',opts:[['cone','Cone'],['exp','Horn'],['bell','Bell'],['swell','Swell']]},
  {key:'copies',label:'copies',opts:[[1,'1'],[2,'2'],[3,'3']]},
  {key:'gap',label:'gap',opts:[[0,'Touching'],[1,'1 mm'],[2,'2 mm'],[4,'4 mm'],[6,'6 mm'],[8,'8 mm'],[12,'12 mm'],[16,'16 mm']]},
  {key:'wall',label:'wall',opts:[[0,'Solid'],[2,'Hollow 2 mm']]},
  {key:'build',label:'build',opts:[['smooth','Smooth'],['l4','3 mm layers ¼'],['l1','3 mm layers full']]},
 ];
-const BASE={shape:'ellT',tip:'same',twist:'linear',turns:T0,taper:'cone',copies:1,gap:0,wall:0,build:'smooth'};
+const BASE={shape:'ellT',tip:'same',twist:'linear',turns:1,taper:'cone',copies:1,gap:0,wall:0,build:'smooth'};
 const S_=o=>Object.assign({},BASE,o);
 const SB=o=>Object.assign({},BASE,{shape:'base'},o);
 const SHEET=[
- ['0a','Spiral circle','The Spiral Circle Sweep: a level circle, edge on the z axis, slanted cone twisted 1.17 turns.',S_({shape:'circle'})],
+ ['0a','Spiral circle','The Spiral Circle Sweep: a level circle, edge on the z axis, slanted cone twisted one turn.',S_({shape:'circle'})],
  ['0b','Elliptic cone','The Elliptic Cone Sweep: level 1 : 2 ellipses, 2ρ outward and 4ρ along the turn.',S_({})],
  ['1a','Ellipse to circle','The slice starts as a 1 : 2 ellipse at the base and rounds off to a circle at the tip.',S_({tip:'circle'})],
  ['1b','Circle to ellipse','The slice starts as a circle at the base and stretches to a 1 : 2 ellipse at the tip.',S_({shape:'circle',tip:'ellT'})],

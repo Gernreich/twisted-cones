@@ -112,11 +112,9 @@ fn main() {
     check("tilted right cone lean, degrees", alpha.to_degrees(), 0.8019, 1e-4);
 
     println!("-- variations");
-    let b = V { shape: "ellT", tip: "same", twist: "linear", turns: ZT / 1000.0, taper: "cone", copies: 1, gap: 0.0, scale: 1.0 };
-    let mut tw = 0f64;
-    for i in 0..=1000 { let u = i as f64 / 1000.0; tw = tw.max((theta(&b, u) - TAU * (u * ZT - 95.0) / 1000.0).abs()); }
-    check("base twist == tau(z-95)/1000, worst gap", tw, 0.0, 1e-12);
-    check("base turns, base to tip", (theta(&b, 1.0) - theta(&b, 0.0)) / TAU, 1.16643, 1e-5);
+    // the variations' base cone turns exactly once (the sweeps turned tau per 1000 of rise, 1.166 turns)
+    let b = V { shape: "ellT", tip: "same", twist: "linear", turns: 1.0, taper: "cone", copies: 1, gap: 0.0, scale: 1.0 };
+    check("base turns, base to tip", (theta(&b, 1.0) - theta(&b, 0.0)) / TAU, 1.0, 1e-12);
     let cases: Vec<(&str, V, f64, f64)> = vec![
         ("0a spiral circle", V { shape: "circle", ..b }, 0.0, 32.66),
         ("0b elliptic cone", b, 0.0, 37.713),
@@ -135,7 +133,7 @@ fn main() {
         check(&format!("{name}: farthest from axis"), f * v.scale, *far, 1e-3);
         let _ = v.copies;
     }
-    check("6 reverses: turns at the midpoint", (theta(&V { twist: "reverse", ..b }, 0.5) / TAU) + 0.095, 0.58322, 1e-5);
+    check("6 reverses: turns at the midpoint", (theta(&V { twist: "reverse", ..b }, 0.5) / TAU) + 0.095, 0.5, 1e-12);
     check("12a layers of 3 mm at 1/4 scale", (ZT * 0.25 / 3.0).floor(), 97.0, 0.0);
     check("12b layers of 3 mm at full scale", (ZT / 3.0).floor(), 388.0, 0.0);
 
