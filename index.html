@@ -113,7 +113,7 @@ body{font-size:14px;line-height:1.4}
     </div>
     <aside class="side">
       <div class="row" id="stretchRow"><span>x,y ×</span><div class="opts" role="group" aria-label="Stretch x and y">
-        <button id="k-1">1</button><button id="k-2">2</button><button id="k-4" aria-pressed="true">4</button><button id="k-6">6</button><button id="k-8">8</button><button id="k-10">10</button>
+        <button id="k-1" aria-pressed="true">1</button><button id="k-2">2</button><button id="k-4">4</button><button id="k-6">6</button><button id="k-8">8</button><button id="k-10">10</button>
       </div></div>
       <div id="sheetSide">
         <h3 id="snum"></h3>
@@ -138,7 +138,7 @@ body{font-size:14px;line-height:1.4}
         <table id="stats"></table>
       </div>
       <p class="note" id="warn"></p>
-      <p class="note">All sizes in mm, z up. x and y are stretched ×4 unless you change it (×1 is the original proportions: about 1166 tall and under 35 wide); the stretch is part of the shape, so the measurements and the STL match the view. Gap, wall and base stay true mm. Drag turns, shift-drag or right-drag pans, wheel zooms.</p>
+      <p class="note">All sizes in mm, z up. x and y start at ×1, the original proportions (about 1166 tall and under 35 wide); stretching them widens the shape; the stretch is part of the shape, so the measurements and the STL match the view. Gap, wall and base stay true mm. Drag turns, shift-drag or right-drag pans, wheel zooms.</p>
     </aside>
   </div>
 
@@ -392,7 +392,7 @@ function aimCam(cam,b,Cz,W,H,S,px,py){
 // ---------- large view ----------
 const gl=document.getElementById('gl'),ov=document.getElementById('ov'),octx=ov.getContext('2d');
 const scene=makeScene(),cam=new THREE.OrthographicCamera(-1,1,1,-1,1,20000),holder=new THREE.Group();scene.add(holder);
-let axes=null,cur=null,curGeo=null;var K=4; // var: slice() reads it, and may run before this line
+let axes=null,cur=null,curGeo=null;var K=1; // var: slice() reads it, and may run before this line
 let yaw=-0.75,pitch=0.3,zoom=1,panX=0,panY=0,anim=null,W=1,H=1,S=1,Cz=583;
 const views={iso:[-0.75,0.3],front:[0,0],side:[-PI/2,0],top:[0,PI/2],under:[-0.75,-0.6]};
 function buildAxes(){if(axes)scene.remove(axes);
