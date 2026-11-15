@@ -164,8 +164,12 @@ fn main() {
     // the power slider at 1 is the linear cone exactly
     let mut c = 0f64; for i in 0..=1000 { let u = i as f64 / 1000.0; c = c.max((rho("pow:1", u) - rho("cone", u)).abs()); }
     check("power 1 == linear cone, worst", c, 0.0, 1e-12);
-    // cutoff (boxes unticked by default): the cone stops at 80%, 933.14 tall, with a top a fifth the size of the base
-    check("7k cutoff 80%: height", ZT * 0.8, 933.142857, 1e-5);
+    // the variations page: the design scaled to 240 mm tall for a Bambu P1S (256 mm cube), built 4x as wide (x,y x1)
+    let ms = 240.0 / ZT;
+    check("P1S scale: 240 / 1166.43", ms, 0.205756, 1e-6);
+    check("P1S: base slice across at x,y x1 (4 x 32.66 x scale)", 4.0 * 2.0 * 16.33 * ms, 26.88, 0.005);
+    // cutoff (boxes unticked by default): the cone stops at 80%, 192 tall on the page, with a top a fifth the size of the base
+    check("7k cutoff 80%: height on the page", 240.0 * 0.8, 192.0, 1e-9);
     check("7k cutoff 80%: top size / base size", rho("cone", 0.8) / rho("cone", 0.0), 0.2, 1e-12);
     // hollow round cone, 1.2 mm wall: the cavity is a cone of radius R - w ending w below the top (where the inner radius reaches 0)
     let (rr, w) = (16.33f64, 1.2f64);

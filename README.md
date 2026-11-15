@@ -37,9 +37,13 @@ It grew in four steps, each kept as its own page:
    slender (33 mm across, 1166 mm tall) that it leans only 0.80° and its slices
    are 0.999902 round, so the ellipse is set directly.
 
-The base cone runs from z = 0, where its slice is 32.66 mm across, to a point on
-the z axis at z = 1166.43, turning once on the way. (The four sweeps turn τ per
-1000 mm of rise, which is 1.166 turns over the same height.)
+The four sweeps are 1166.43 mm tall. The variations page scales that design down
+to 240 mm tall so it prints on a Bambu Lab P1S (256 × 256 × 256 mm build volume),
+then builds it four times as wide as the sweeps: at x,y × 1 the base cone's slice
+is 26.9 mm across at z = 0 and it reaches a point on the z axis at z = 240, turning
+once on the way. The measurements show the printed size and whether it fits the
+P1S; the grid under the model is its 256 × 256 plate. (The four sweeps turn τ per
+1000 mm of rise, which is 1.166 turns over their height.)
 
 ## Files
 
