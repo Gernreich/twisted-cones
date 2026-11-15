@@ -41,7 +41,7 @@ At full size it makes 388 layers of 3 mm ply; at ¼ scale, 97.
   `cargo build --release && ./target/release/twisted_cones`; `Cargo.toml` names the
   crate and its authors, and `Cargo.lock` pins the build.
 
-The pages load three.js r128 from cdnjs.
+The 3D views use the Three JS library, release r128, loaded from cdnjs.
 
 ## Licence
 
