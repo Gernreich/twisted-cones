@@ -49,6 +49,9 @@ P1S; the grid under the model is its 256 × 256 plate. (The four sweeps turn τ 
 - `index.html`: the mixer. Favorites and saved combinations stay in the viewer's
   browser.
 - `series/`: the four pages above.
+- `frozen/2026-11-15/`: the mixer as it was on 15 November 2026, kept unchanged
+  ([page](https://gernreich.github.io/twisted-cones/frozen/2026-11-15/), git tag
+  `frozen-2026-11-15`).
 - `src/main.rs`: recomputes every figure the pages quote, from the formulas the
   pages draw with, and fails if any is off. Build and run with
   `cargo build --release && ./target/release/twisted_cones`; `Cargo.toml` names the
