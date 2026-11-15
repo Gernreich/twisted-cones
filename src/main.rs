@@ -164,6 +164,9 @@ fn main() {
     // the power slider at 1 is the linear cone exactly
     let mut c = 0f64; for i in 0..=1000 { let u = i as f64 / 1000.0; c = c.max((rho("pow:1", u) - rho("cone", u)).abs()); }
     check("power 1 == linear cone, worst", c, 0.0, 1e-12);
+    // render cutoff: the cone stopped at 80% is 933.14 tall with a top a fifth the size of the base
+    check("7k cutoff 80%: height", ZT * 0.8, 933.142857, 1e-5);
+    check("7k cutoff 80%: top size / base size", rho("cone", 0.8) / rho("cone", 0.0), 0.2, 1e-12);
     // tapers: base size and size at the tip
     for (t, tip) in [("cone", 0.0), ("exp", 0.1633), ("pow:2.5", 0.0), ("pow:0.1", 0.0), ("pow:5", 0.0), ("swell", 0.0), ("hyper", 1.633), ("hyperC", 0.0), ("hyperT", 0.0), ("log", 0.0), ("logT", 0.0), ("ellip", 0.0), ("cos", 0.0)] {
         check(&format!("taper {t}: size at base"), rho(t, 0.0), 16.33, 1e-12);

@@ -5,10 +5,11 @@
 **[Open the variations](https://gernreich.github.io/twisted-cones/)**
 
 A cone, offset so one side runs up the z axis, and twisted around that axis. Every
-slice is level with the x/y plane and touches the z axis. The page shows 29
+slice is level with the x/y plane and touches the z axis. The page shows 30
 variations on a contact sheet (slice shape, how fast it twists at the base and at
 the tip, the curve it tapers along, copies, and a gap at the axis), and a mixer that
-combines any of them, adds a circular base 1 to 100 layers of 3 mm thick, and
+combines any of them, cuts the shape off at any height from 10% to 100% with a flat
+top, adds a circular base 1 to 100 layers of 3 mm thick, and
 downloads the shape as an STL file, all lit and turnable in 3D. The taper curves are
 linear (a cone), geometric (a horn), a power curve (1 − u)^k with k on a slider from
 0.1 to 5 (2.5 is a bell, 0.5 a dome), parabolic (a swell), hyperbolic, a closed hyperbola (the hyperbola shifted to end in a point), the

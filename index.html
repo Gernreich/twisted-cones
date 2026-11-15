@@ -186,7 +186,9 @@ const GROUPS=[
  {key:'copies',label:'copies',opts:[[1,'1'],[2,'2'],[3,'3']]},
  {key:'gap',label:'gap',opts:[[0,'Touching'],[1,'1 mm'],[2,'2 mm'],[4,'4 mm'],[6,'6 mm'],[8,'8 mm'],[12,'12 mm'],[16,'16 mm']]},
 ];
-const BASE={shape:'ellT',tip:'same',t0:1,t1:1,taper:'cone',copies:1,gap:0,wall:0,build:'smooth',baseOn:false,baseN:10,pw:2.5};
+const BASE={shape:'ellT',tip:'same',t0:1,t1:1,taper:'cone',copies:1,gap:0,wall:0,build:'smooth',baseOn:false,baseN:10,pw:2.5,top:100};
+// render cutoff: the shape stops at top % of its height with a flat top
+const HT=s=>ZT*(s.top??100)/100;
 const LAYER=3; // mm per base layer (3 mm ply)
 // circular base under z = 0, centred on the z axis, wide enough to take every copy's bottom slice, plus 1 mm
 function baseRadius(s){let r=0;for(const q of slice(s,0,192))r=Math.max(r,Math.hypot(q[0],q[1]));return Math.ceil((r+1)*2)/2;}
@@ -216,6 +218,7 @@ const SHEET=[
  ['7h','Hyperbola turned τ/4','The closed hyperbola turned a quarter turn, 10(1 − u)/(10 − 9u): it keeps nearly full width almost to the top, then closes sharply.',SB({taper:'hyperT'})],
  ['7i','Logarithmic','Size follows 1 − log₁₀(1 + 9u): a fast start like the hyperbola, gentler after, closing at the tip.',SB({taper:'log'})],
  ['7j','Log turned τ/4','The logarithmic curve turned a quarter turn, (10 − 10^u)/9: an exponential that holds its width and drops away near the top.',SB({taper:'logT'})],
+ ['7k','Cut off at 80%','The cone stopped at 80% of its height (933.14), leaving a flat top a fifth the size of the base, the way the open hyperbola ends.',SB({top:80})],
  ['7d','Elliptic','Size follows a quarter ellipse, √(1 − u²): full width most of the way up, then a rounded nose.',SB({taper:'ellip'})],
  ['7e','Cosine','Size follows cos(πu/2): a soft shoulder at the base and a pointed tip.',SB({taper:'cos'})],
  ['8','Parabolic (swell)','Size follows the parabola (1 − u)(1 + 3u): it grows to 1.33× a third of the way up, then shrinks to the tip, like a twisted flame.',SB({taper:'swell'})],
@@ -274,16 +277,17 @@ function nameOf(s){const parts=[];
   if(s.gap)parts.push(s.gap+' mm gap');
   if(s.wall)parts.push('hollow');
   if(s.build!=='smooth')parts.push(lbl('build',s.build));
+  if((s.top??100)<100)parts.push(`cut off at ${s.top}%`);
   if(s.baseOn)parts.push(`circular base, ${s.baseN} layer${s.baseN===1?'':'s'}`);
   return parts.join(' · ');}
 function stats(s){let near=Infinity,far=0;
-  for(let i=0;i<300;i++){const u=i/300;for(const q of slice(s,u,192)){const r=Math.hypot(q[0],q[1]);if(r<near)near=r;if(r>far)far=r;}}
+  for(let i=0;i<=300;i++){const u=i/300*HT(s)/ZT;for(const q of slice(s,Math.min(u,0.99999),192)){const r=Math.hypot(q[0],q[1]);if(r<near)near=r;if(r>far)far=r;}}
   let peak=-Infinity;for(let i=0;i<=400;i++)peak=Math.max(peak,theta(s,i/400));
-  const sc=scaleOf(s),rows=[['height',(ZT*sc).toFixed(2)],['closest to z axis',(near*sc).toFixed(3)],['farthest from z axis',(far*sc).toFixed(3)],
+  const sc=scaleOf(s),rows=[['height',(HT(s)*sc).toFixed(2)],['closest to z axis',(near*sc).toFixed(3)],['farthest from z axis',(far*sc).toFixed(3)],
     ['turns, base to tip',((theta(s,1)-theta(s,0))/TAU).toFixed(4)]];
   if(s.wall)rows.push(['wall',(s.wall*sc).toFixed(2)]);
   if(s.build!=='smooth')rows.push(['layers of 3 mm',Math.floor(ZT*sc/3)]);
-  if(s.baseOn){rows.push(['base radius',baseRadius(s).toFixed(1)]);rows.push(['base thickness',`${s.baseN} × ${LAYER} = ${baseT(s)}`]);rows.push(['height with base',(ZT+baseT(s)).toFixed(2)]);}
+  if(s.baseOn){rows.push(['base radius',baseRadius(s).toFixed(1)]);rows.push(['base thickness',`${s.baseN} × ${LAYER} = ${baseT(s)}`]);rows.push(['height with base',(HT(s)+baseT(s)).toFixed(2)]);}
   return [rows,far];}
 function warnings(s,far){const w=[];
   if(s.copies>1){ // copies overlap if a point of one copy (away from the shared axis) lies inside another
@@ -328,7 +332,7 @@ function geomFor(s){
     const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));g.computeVertexNormals();return g;
   }
   const NZ=Math.max(s.t0,s.t1)>2.5?900:500,rings=[];
-  for(let i=0;i<=NZ;i++){const u=i/NZ;rings.push([u*ZT,slice(s,Math.min(u,0.99999),NT)]);}
+  for(let i=0;i<=NZ;i++){const u=i/NZ*HT(s)/ZT;rings.push([u*ZT,slice(s,Math.min(u,0.99999),NT)]);}
   const verts=[],idx=[];
   const surf=(rs,flip)=>{const o=verts.length/3;rs.forEach(([z,p])=>p.forEach(q=>verts.push(q[0],q[1],z)));
     for(let i=0;i<rs.length-1;i++)for(let j=0;j<NT;j++){const a=o+i*NT+j,b=o+i*NT+(j+1)%NT,c=a+NT,d=b+NT;flip?idx.push(a,d,b,a,c,d):idx.push(a,b,d,a,d,c);}};
@@ -377,11 +381,12 @@ function rebuild(fromPreset){
   if(cur){holder.remove(cur);freeGroup(cur);}if(curGeo)curGeo.dispose();
   curGeo=geomFor(st);cur=groupFor(st,curGeo);holder.add(cur);
   const sc=scaleOf(st);
-  Cz=(ZT-baseT(st))*sc/2;if(fromPreset||sc!==lastScale){zoom=1;panX=panY=0;}lastScale=sc;
+  Cz=(HT(st)-baseT(st))*sc/2;if(fromPreset||sc!==lastScale){zoom=1;panX=panY=0;}lastScale=sc;
   if(fromPreset){cut=!!st.wall;document.getElementById('t-cut').setAttribute('aria-pressed',cut);}
   setClip(cut);
   GROUPS.forEach(g=>g.opts.forEach(([v],i)=>document.getElementById(`o-${g.key}-${i}`).setAttribute('aria-pressed',st[g.key]===v)));
   document.getElementById('pname').textContent=nameOf(st);
+  {const te=document.getElementById('top');te.value=st.top;document.getElementById('topout').textContent=st.top+'%';}
   {const pe=document.getElementById('pw');pe.value=st.pw;document.getElementById('pwout').textContent=st.pw+(st.taper==='pow'?'':' (pick Power to use)');}
   {const on=!!st.baseOn;document.getElementById('base-on').setAttribute('aria-pressed',on);document.getElementById('base-off').setAttribute('aria-pressed',!on);
    const bn=document.getElementById('baseN');bn.value=st.baseN;bn.disabled=!on;document.getElementById('baseNout').textContent=`${st.baseN} × 3 mm`;}
@@ -396,7 +401,7 @@ function proj(q){const b=basis(yaw,pitch),x=q[0]*K,y=q[1]*K,z=q[2]-Cz;
   return [W/2+panX+(x*b.r[0]+y*b.r[1])*S,H/2+panY-(x*b.u[0]+y*b.u[1]+z*b.u[2])*S];}
 function draw(){
   const sc=scaleOf(st);
-  S=Math.min(W*3,H)/((ZT+baseT(st))*sc*1.15)*zoom;
+  S=Math.min(W*3,H)/((HT(st)+baseT(st))*sc*1.15)*zoom;
   holder.scale.set(K*sc,K*sc,sc);axes.scale.set(K,K,1);
   aimCam(cam,basis(yaw,pitch),Cz,W,H,S,panX,panY);R.render(scene,cam);
   octx.clearRect(0,0,W,H);const muted=css('--muted');
@@ -442,6 +447,9 @@ GROUPS.forEach(g=>{const row=document.createElement('div');row.className='row';
   mixer.querySelector('#o-taper-0').closest('.row').after(row);
   const pe=document.getElementById('pw');pe.oninput=()=>{st.pw=+pe.value;st.taper='pow';rebuild(false);};}
 {const row=document.createElement('div');row.className='row';
+  row.innerHTML=`<span>cutoff</span><div class="opts"><label class="baseN" for="top">stop at <input id="top" type="range" min="10" max="100" step="1" value="100"> <output id="topout">100%</output></label></div>`;
+  mixer.appendChild(row);const te=document.getElementById('top');te.oninput=()=>{st.top=+te.value;rebuild(false);};}
+{const row=document.createElement('div');row.className='row';
   row.innerHTML=`<span>base</span><div class="opts" role="group" aria-label="Base"><button id="base-off">None</button><button id="base-on">Circular</button>`+
     `<label class="baseN" for="baseN">layers <input id="baseN" type="range" min="1" max="100" step="1" value="10"> <output id="baseNout">10 × 3 mm</output></label></div>`;
   mixer.appendChild(row);
@@ -472,7 +480,7 @@ function pump(){busy=true;const job=queue.shift();if(!job){busy=false;setClip(cu
   const [card,s]=job,g=geomFor(s),grp=groupFor(s,g),sc=scaleOf(s);
   TR.setClearColor(new THREE.Color(css('--sheet')));
   tholder.add(grp);tholder.scale.set(K*sc,K*sc,sc);setClip(!!s.wall);
-  aimCam(tcam,basis(-0.75,0.3),(ZT-baseT(s))*sc/2,TW,TH,TH/((ZT+baseT(s))*sc*1.12),0,0);TR.render(tscene,tcam);
+  aimCam(tcam,basis(-0.75,0.3),(HT(s)-baseT(s))*sc/2,TW,TH,TH/((HT(s)+baseT(s))*sc*1.12),0,0);TR.render(tscene,tcam);
   const url=TR.domElement.toDataURL('image/png');tholder.remove(grp);freeGroup(grp);g.dispose();
   const img=document.createElement('img');img.alt=nameOf(s);img.src=url;card.replaceChild(img,card.firstElementChild);
   setClip(cut);setTimeout(pump,0);}
@@ -506,7 +514,7 @@ document.getElementById('tab-sheet').onclick=()=>{location.hash='#sheet';};
 document.getElementById('tab-mixer').onclick=()=>{location.hash='#mixer';};
 PRESETS.forEach(([num,name,s],i)=>{const c=makeCard(num,name,resolve(s));c.onclick=()=>{st=resolve(PRESETS[i][2]);rebuild(true);document.querySelector('.view').scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'nearest'});};gal.appendChild(c);});
 let saved=[];
-try{saved=JSON.parse(localStorage.getItem('tcv-saved')||'[]');if(!Array.isArray(saved))saved=[];saved=saved.map(x=>{if(x.t0===undefined){const T=x.turns??1;const m={accel:[0,2*T],decel:[2*T,0]}[x.twist]||[T,T];x=Object.assign({},x,{t0:+m[0].toFixed(3),t1:+m[1].toFixed(3)});delete x.twist;delete x.turns;}const P={bell:2.5,p05:0.5,p08:0.8};if(x.taper in P)x=Object.assign({},x,{taper:'pow',pw:P[x.taper]});return Object.assign({},BASE,x,{wall:0,build:'smooth'});});}catch(e){saved=[];}
+try{saved=JSON.parse(localStorage.getItem('tcv-saved')||'[]');if(!Array.isArray(saved))saved=[];saved=saved.map(x=>{if(x.t0===undefined){const T=x.turns??1;const m={accel:[0,2*T],decel:[2*T,0]}[x.twist]||[T,T];x=Object.assign({},x,{t0:+m[0].toFixed(3),t1:+m[1].toFixed(3)});delete x.twist;delete x.turns;}const P={bell:2.5,p05:0.5,p08:0.8};if(x.top===undefined)x=Object.assign({},x,{top:100});if(x.taper in P)x=Object.assign({},x,{taper:'pow',pw:P[x.taper]});return Object.assign({},BASE,x,{wall:0,build:'smooth'});});}catch(e){saved=[];}
 const persist=()=>{try{localStorage.setItem('tcv-saved',JSON.stringify(saved));return true;}catch(e){return false;}};
 function drawSaved(){savedBox.innerHTML='';saved.forEach((s,i)=>savedBox.appendChild(makeCard('Saved '+(i+1),nameOf(s),s)));
   document.getElementById('noSaved').hidden=saved.length>0;document.getElementById('clear').hidden=!saved.length;}
