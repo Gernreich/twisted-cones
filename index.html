@@ -186,7 +186,7 @@ const GROUPS=[
  {key:'copies',label:'copies',opts:[[1,'1'],[2,'2'],[3,'3']]},
  {key:'gap',label:'gap',opts:[[0,'Touching'],[1,'1 mm'],[2,'2 mm'],[4,'4 mm'],[6,'6 mm'],[8,'8 mm'],[12,'12 mm'],[16,'16 mm']]},
 ];
-const BASE={shape:'ellT',tip:'same',t0:1,t1:1,taper:'cone',copies:1,gap:0,wall:0,build:'smooth',baseOn:false,baseN:10,pw:2.5,top:100,fT:true,fW:true,fS:true};
+const BASE={shape:'ellT',tip:'same',t0:1,t1:1,taper:'cone',copies:1,gap:0,wall:0,build:'smooth',baseOn:false,baseN:10,pw:2.5,top:100,fT:false,fW:false,fS:false};
 // cutoff: the whole shape (taper, twist, shape change) is fitted into top % of the height
 const HT=s=>ZT*(s.top??100)/100;
 // u runs 0 to 1 over the height shown; a part not ticked to finish at the cut uses the full-height u, so it just stops there
@@ -220,7 +220,7 @@ const SHEET=[
  ['7h','Hyperbola turned τ/4','The closed hyperbola turned a quarter turn, 10(1 − u)/(10 − 9u): it keeps nearly full width almost to the top, then closes sharply.',SB({taper:'hyperT'})],
  ['7i','Logarithmic','Size follows 1 − log₁₀(1 + 9u): a fast start like the hyperbola, gentler after, closing at the tip.',SB({taper:'log'})],
  ['7j','Log turned τ/4','The logarithmic curve turned a quarter turn, (10 − 10^u)/9: an exponential that holds its width and drops away near the top.',SB({taper:'logT'})],
- ['7k','Cut off at 80%','The whole shape finished in 80% of the height (933.14): the same taper, twist and shape change, just shorter.',SB({top:80})],
+ ['7k','Cut off at 80%','The cone stopped at 80% of its height (933.14), leaving a flat top a fifth the size of the base. Tick taper, twist or shape to make that part finish at the cut instead.',SB({top:80})],
  ['7d','Elliptic','Size follows a quarter ellipse, √(1 − u²): full width most of the way up, then a rounded nose.',SB({taper:'ellip'})],
  ['7e','Cosine','Size follows cos(πu/2): a soft shoulder at the base and a pointed tip.',SB({taper:'cos'})],
  ['8','Parabolic (swell)','Size follows the parabola (1 − u)(1 + 3u): it grows to 1.33× a third of the way up, then shrinks to the tip, like a twisted flame.',SB({taper:'swell'})],
@@ -467,7 +467,7 @@ GROUPS.forEach(g=>{const row=document.createElement('div');row.className='row';
 {const row=document.createElement('div');row.className='row';
   row.innerHTML=`<span>cutoff</span><div class="opts"><label class="baseN" for="top">stop at <input id="top" type="range" min="10" max="100" step="1" value="100"> <output id="topout">100%</output></label></div>`;
   mixer.appendChild(row);const te=document.getElementById('top');te.oninput=()=>{st.top=+te.value;rebuild(false);};
-  const fin=document.createElement('div');fin.className='finish';fin.innerHTML='<span>finish at the cut:</span>'+[['fT','taper'],['fW','twist'],['fS','shape']].map(([k,n])=>`<label><input type="checkbox" id="${k}" checked> ${n}</label>`).join('');
+  const fin=document.createElement('div');fin.className='finish';fin.innerHTML='<span>finish at the cut:</span>'+[['fT','taper'],['fW','twist'],['fS','shape']].map(([k,n])=>`<label><input type="checkbox" id="${k}"> ${n}</label>`).join('');
   row.querySelector('.opts').appendChild(fin);['fT','fW','fS'].forEach(k=>{const c=document.getElementById(k);c.onchange=()=>{st[k]=c.checked;rebuild(false);};});}
 {const row=document.createElement('div');row.className='row';
   row.innerHTML=`<span>hollow</span><div class="opts"><label class="baseN" for="wall">wall <input id="wall" type="range" min="0" max="5" step="0.2" value="0"> <output id="wallout">solid</output></label></div>`;
