@@ -71,6 +71,9 @@ nav.tabs button:focus-visible{outline:2px solid var(--accent);outline-offset:2px
 .finish label{display:flex;align-items:center;gap:4px}
 .finish input{accent-color:var(--accent);margin:0}
 .baseN input{flex:1;min-width:0;accent-color:var(--accent)}
+.curhead{display:flex;align-items:center;gap:8px}
+.star{font-size:22px;line-height:1;background:none;border:0;padding:2px 4px;color:var(--accent);cursor:pointer}
+.star:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px}
 .dual{position:relative;flex:1;min-width:0;height:22px}
 .dual::before{content:"";position:absolute;left:7px;right:7px;top:10px;height:3px;border-radius:2px;background:var(--grid)}
 .dual input{position:absolute;inset:0;width:100%;height:22px;margin:0;background:none;pointer-events:none;-webkit-appearance:none;appearance:none}
@@ -134,7 +137,7 @@ body{font-size:14px;line-height:1.4}
       <div id="mixSide" hidden style="display:grid;gap:14px">
       <div class="panel" id="mixer" aria-label="Combine settings"></div>
       <div>
-        <h3>Current combination</h3>
+        <div class="curhead"><h3>Current combination</h3><button class="star" id="fav" type="button" aria-pressed="false" aria-label="Add to favorites" title="Add to favorites">☆</button></div>
         <p class="pname" id="pname"></p>
       </div>
       <div class="actions">
@@ -161,6 +164,12 @@ body{font-size:14px;line-height:1.4}
       </div>
     </div>
     <div class="gallery" id="sheetGal"></div>
+  </section>
+
+  <section style="display:grid;gap:10px" id="secFav" hidden>
+    <h2 class="sec">★ Favorites</h2>
+    <div class="gallery" id="favs"></div>
+    <p class="empty" id="noFav">No favorites yet. Press the ☆ beside Current combination to keep one here (with its x,y width). Favorites stay in this browser only.</p>
   </section>
 
   <section style="display:grid;gap:10px" id="secSaved" hidden>
@@ -279,7 +288,7 @@ function rho(t,u,pw=2.5){switch(t){case 'cone':return R0*(1-u);case 'exp':return
 function theta(s,u){return TAU*(-0.095+s.t0*u+(s.t1-s.t0)*u*u/2);}
 const totalTurns=s=>(s.t0+s.t1)/2;
 function slice(s,u,n){const r=rho(s.taper,uf(s,'fT',u),s.pw),uS=uf(s,'fS',u),loc=[];let mx=Infinity;
-  const kx=XY0*(typeof K==='number'?K:1); // width: XY0 × the x,y slider, part of the shape (and the STL), applied before the gap, wall and base
+  const kx=XY0*(s.k??(typeof K==='number'?K:1)); // width: XY0 × the x,y slider, part of the shape (and the STL), applied before the gap, wall and base
   for(let j=0;j<n;j++){const q=unit(s,j/n*TAU,uS);loc.push([q[0]*r*kx,q[1]*r*kx]);if(q[0]*r*kx<mx)mx=q[0]*r*kx;}
   const th=(s.dir===-1?-1:1)*theta(s,uf(s,'fW',u)),c=Math.cos(th),si=Math.sin(th); // dir −1: clockwise looking down z (a mirror image)
   return loc.map(([x,y])=>{const a=x-mx+s.gap;return [a*c-y*si,a*si+y*c];});}
@@ -434,6 +443,7 @@ function rebuild(fromPreset){
   Cz=(ZT-baseT(st))*sc/2;if(fromPreset||sc!==lastScale){zoom=1;panX=panY=0;}lastScale=sc;
   GROUPS.forEach(g=>g.opts.forEach(([v],i)=>document.getElementById(`o-${g.key}-${i}`).setAttribute('aria-pressed',st[g.key]===v)));
   document.getElementById('pname').textContent=nameOf(st);
+  if(typeof markFav==='function')markFav();
   {const we=document.getElementById('wall');we.value=st.wall;document.getElementById('wallout').textContent=st.wall?st.wall.toFixed(1)+' mm':'solid';}
   {const T=turnsOf(st),b=spreadOf(st);document.getElementById('tt').value=T;document.getElementById('tb').value=b;document.getElementById('ttout').textContent=+T.toFixed(2);
    document.getElementById('tbout').textContent=Math.abs(b)<0.001?'even':`${b<0?'slows':'speeds up'}: ${+st.t0.toFixed(2)} at the base → ${+st.t1.toFixed(2)} at the tip, turns per height`;}
@@ -593,7 +603,7 @@ function setMode(m){tabMode=m;const mix=m==='mixer';
   (mix?document.getElementById('mixer'):document.getElementById('sheetPanel')).appendChild(document.getElementById('stretchRow'));
   document.getElementById('tab-sheet').toggleAttribute('aria-current',!mix);if(!mix)document.getElementById('tab-sheet').setAttribute('aria-current','page');
   document.getElementById('tab-mixer').toggleAttribute('aria-current',mix);if(mix)document.getElementById('tab-mixer').setAttribute('aria-current','page');
-  ['sub-mix','mixSide','secSaved','secStart'].forEach(id=>document.getElementById(id).hidden=!mix);
+  ['sub-mix','mixSide','secFav','secSaved','secStart'].forEach(id=>document.getElementById(id).hidden=!mix);
   ['sub-sheet','sheetSide','secSheet'].forEach(id=>document.getElementById(id).hidden=mix);
   document.getElementById('mixSide').style.display=mix?'grid':'none';
   if(!mix)showSheet(sheetSel);else rebuild(false);}
@@ -616,11 +626,27 @@ document.getElementById('save').onclick=()=>{
   status.textContent=ok?'Saved':'Saved for this visit; this browser blocks storage';};
 document.getElementById('clear').onclick=()=>{saved=[];persist();drawSaved();status.textContent='Cleared';};
 
+// favorites: the current combination plus its x,y width, kept in this browser; the star toggles the one on screen
+const favBox=document.getElementById('favs'),favBtn=document.getElementById('fav');let favs=[];
+try{favs=JSON.parse(localStorage.getItem('tcv-favs')||'[]');if(!Array.isArray(favs))favs=[];favs=favs.map(x=>Object.assign({},BASE,x));}catch(e){favs=[];}
+const fkey=o=>JSON.stringify(Object.keys(o).sort().map(k=>[k,o[k]]));
+const curFav=()=>Object.assign({},st,{k:K});
+const favIndex=()=>{const key=fkey(curFav());return favs.findIndex(f=>fkey(f)===key);};
+function drawFavs(){favBox.innerHTML='';favs.forEach((f,i)=>{const c=makeCard('★ '+(i+1),nameOf(Object.assign({},f)).replace(/ · x,y ×[\d.]+$/,'')+(f.k!==1?` · x,y ×${f.k}`:''),f);
+    c.onclick=()=>{K=f.k;document.getElementById('kxy').value=Math.round(100*Math.log10(K/0.1));document.getElementById('kxyout').textContent=K;const s=Object.assign({},f);delete s.k;st=s;rebuild(true);
+      document.querySelector('.view').scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'nearest'});};
+    favBox.appendChild(c);thumbInto(c,f);});
+  document.getElementById('noFav').hidden=favs.length>0;}
+function markFav(){const on=favIndex()>=0;favBtn.textContent=on?'★':'☆';favBtn.setAttribute('aria-pressed',on);const t=on?'Remove from favorites':'Add to favorites';favBtn.title=t;favBtn.setAttribute('aria-label',t);}
+favBtn.onclick=()=>{const i=favIndex();if(i>=0)favs.splice(i,1);else favs.push(curFav());
+  let ok=true;try{localStorage.setItem('tcv-favs',JSON.stringify(favs));}catch(e){ok=false;}
+  drawFavs();markFav();status.textContent=(i>=0?'Removed from favorites':'Added to favorites')+(ok?'':' for this visit; this browser blocks storage');};
+
 addEventListener('resize',()=>{size();draw();});
 const retheme=()=>{R.setClearColor(new THREE.Color(css('--sheet')));mat.color=new THREE.Color(css('--solid'));buildAxes();draw();renderAllThumbs();};
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change',retheme);
 new MutationObserver(retheme).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
-R.setClearColor(new THREE.Color(css('--sheet')));mat.color=new THREE.Color(css('--solid'));buildAxes();size();drawSaved();route();renderAllThumbs();
+R.setClearColor(new THREE.Color(css('--sheet')));mat.color=new THREE.Color(css('--solid'));buildAxes();size();drawSaved();route();renderAllThumbs();drawFavs();markFav();
 })();
 </script>
 </body>
