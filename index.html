@@ -184,7 +184,6 @@ const GROUPS=[
  {key:'t1',label:'end turns',opts:[[0,'0'],[0.3,'0.3'],[0.5,'0.5'],[1,'1'],[2,'2'],[3,'3'],[5,'5']]},
  {key:'taper',label:'taper',opts:[['cone','Linear (cone)'],['exp','Geometric (horn)'],['pow','Power'],['swell','Parabolic (swell)'],['hyper','Hyperbolic'],['hyperC','Closed hyperbola'],['hyperT','Hyperbola turned τ/4'],['log','Logarithmic'],['logT','Log turned τ/4'],['ellip','Elliptic'],['cos','Cosine']]},
  {key:'copies',label:'copies',opts:[[1,'1'],[2,'2'],[3,'3']]},
- {key:'gap',label:'gap',opts:[[0,'Touching'],[1,'1 mm'],[2,'2 mm'],[4,'4 mm'],[6,'6 mm'],[8,'8 mm'],[12,'12 mm'],[16,'16 mm']]},
 ];
 const BASE={shape:'ellT',tip:'same',t0:1,t1:1,taper:'cone',copies:1,gap:0,wall:0,build:'smooth',baseOn:false,baseN:10,pw:2.5,top:100,fT:false,fW:false,fS:false};
 // cutoff: the whole shape (taper, twist, shape change) is fitted into top % of the height
@@ -413,6 +412,7 @@ function rebuild(fromPreset){
   GROUPS.forEach(g=>g.opts.forEach(([v],i)=>document.getElementById(`o-${g.key}-${i}`).setAttribute('aria-pressed',st[g.key]===v)));
   document.getElementById('pname').textContent=nameOf(st);
   {const we=document.getElementById('wall');we.value=st.wall;document.getElementById('wallout').textContent=st.wall?st.wall.toFixed(1)+' mm':'solid';}
+  {const ge=document.getElementById('gap');ge.value=st.gap;document.getElementById('gapout').textContent=st.gap?st.gap+' mm':'touching';}
   {const te=document.getElementById('top');te.value=st.top;document.getElementById('topout').textContent=st.top+'%';['fT','fW','fS'].forEach(k=>{const c=document.getElementById(k);c.checked=st[k]!==false;c.disabled=st.top>=100;});}
   {const pe=document.getElementById('pw');pe.value=st.pw;document.getElementById('pwout').textContent=st.pw+(st.taper==='pow'?'':' (pick Power to use)');}
   {const on=!!st.baseOn;document.getElementById('base-on').setAttribute('aria-pressed',on);document.getElementById('base-off').setAttribute('aria-pressed',!on);
@@ -468,6 +468,10 @@ GROUPS.forEach(g=>{const row=document.createElement('div');row.className='row';
   g.opts.forEach(([v,t],i)=>{const b=document.createElement('button');b.id=`o-${g.key}-${i}`;b.textContent=t;b.setAttribute('aria-pressed','false');
     b.onclick=()=>{st[g.key]=v;rebuild(false);};box.appendChild(b);});
   mixer.appendChild(row);});
+{const row=document.createElement('div');row.className='row';
+  row.innerHTML=`<span>gap</span><div class="opts"><label class="baseN" for="gap">from the axis <input id="gap" type="range" min="0" max="100" step="0.5" value="0"> <output id="gapout">touching</output></label></div>`;
+  mixer.querySelector('#o-copies-0').closest('.row').after(row);
+  const ge=document.getElementById('gap');ge.oninput=()=>{st.gap=+ge.value;rebuild(false);};}
 {const row=document.createElement('div');row.className='row';row.id='powRow';
   row.innerHTML=`<span>power</span><div class="opts"><label class="baseN" for="pw">(1 − u)^ <input id="pw" type="range" min="0.1" max="5" step="0.1" value="2.5"> <output id="pwout">2.5</output></label></div>`;
   mixer.querySelector('#o-taper-0').closest('.row').after(row);
