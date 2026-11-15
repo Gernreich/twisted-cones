@@ -216,10 +216,10 @@ const GROUPS=[
  {key:'shape',label:'at base',opts:SHAPES},
  {key:'tip',label:'at tip',opts:[['same','Same'],...SHAPES]},
 // twist rate at the base and at the tip, in turns per full height; the rate changes steadily in between
- {key:'taper',label:'taper',opts:[['cone','Linear (cone)'],['exp','Geometric (horn)'],['swell','Parabolic (swell)'],['hyper','Hyperbolic'],['hyperC','Closed hyperbola'],['hyperT','Hyperbola turned τ/4'],['log','Logarithmic'],['logT','Log turned τ/4'],['ellip','Elliptic'],['cos','Cosine'],['pow','Power']]},
+ {key:'taper',label:'taper',opts:[['cone','Linear (cone)'],['pow','Power'],['bessel','Bessel horn'],['log','Logarithmic'],['cos','Cosine'],['logT','Log turned τ/4'],['ellip','Elliptic'],['hyperT','Hyperbola turned τ/4'],['scurve','S-curve'],['swell','Parabolic (swell)'],['waist','Waist'],['ripple','Ripple']]},
  {key:'copies',label:'copies',opts:[[1,'1'],[2,'2'],[3,'3'],[4,'4'],[5,'5']]},
 ];
-const BASE={shape:'ellT',tip:'same',t0:1,t1:1,taper:'cone',copies:1,gap:0,wall:0,build:'smooth',baseOn:false,baseN:1,dir:1,pw:2.5,top:100,fT:false,fW:false,fS:false};
+const BASE={shape:'ellT',tip:'same',t0:1,t1:1,taper:'cone',copies:1,gap:0,wall:0,build:'smooth',baseOn:false,baseN:1,dir:1,pw:2.5,fl:1,rn:5,ra:0.4,top:100,fT:false,fW:false,fS:false};
 // cutoff: the whole shape (taper, twist, shape change) is fitted into top % of the height
 const HT=s=>ZT*(s.top??100)/100;
 // u runs 0 to 1 over the height shown; a part not ticked to finish at the cut uses the full-height u, so it just stops there
@@ -244,16 +244,18 @@ const SHEET=[
  ['5a','Two turns','Two full turns from base to tip.',SB({t0:2,t1:2})],
  ['5b','Three turns','Three full turns from base to tip.',SB({t0:3,t1:3})],
  ['5c','Five turns','Five full turns from base to tip; reads like a screw.',SB({t0:5,t1:5})],
- ['7a','Geometric (horn)','Size falls by the same fraction for each step up, 100 : 1 overall, so the tip stays open.',SB({taper:'exp'})],
  ['7b','Power 2.5 (bell)','Size follows (1 − u)^2.5: a wide bell at the base that narrows quickly, then a long slim neck.',SB({taper:'pow',pw:2.5})],
- ['7c','Hyperbolic','Size follows 1/(1 + 9u): it narrows fastest near the base, then slowly, ending 10 : 1 with the tip open.',SB({taper:'hyper'})],
- ['7c2','Closed hyperbola','Size follows (1 − u)/(1 + 9u): the hyperbola with its tip size taken away and stretched back to full width, so the same sharp start ends in a point.',SB({taper:'hyperC'})],
+ ['7c','Bessel horn, flare 1','Size follows (1 + 9u)^−1, a Bessel horn like a trumpet bell: it narrows fastest near the base, then slowly, ending 10 : 1 with the tip open. The flare slider sharpens or softens it.',SB({taper:'bessel',fl:1})],
+ ['7c2','Bessel horn, flare 2','A sharper flare, (1 + 9u)^−2: a wide mouth that pulls in quickly to a long thin neck, 1% of the base at the tip.',SB({taper:'bessel',fl:2})],
  ['7f','Power 0.5','Size follows √(1 − u): a parabola on its side, a rounded dome that stays wide and closes in a sharp point.',SB({taper:'pow',pw:0.5})],
  ['7g','Power 0.8','Size follows (1 − u)^0.8: a cone bowed slightly outward.',SB({taper:'pow',pw:0.8})],
  ['7h','Hyperbola turned τ/4','The closed hyperbola turned a quarter turn, 10(1 − u)/(10 − 9u): it keeps nearly full width almost to the top, then closes sharply.',SB({taper:'hyperT'})],
  ['7i','Logarithmic','Size follows 1 − log₁₀(1 + 9u): a fast start like the hyperbola, gentler after, closing at the tip.',SB({taper:'log'})],
  ['7j','Log turned τ/4','The logarithmic curve turned a quarter turn, (10 − 10^u)/9: an exponential that holds its width and drops away near the top.',SB({taper:'logT'})],
  ['7k','Cut off at 80%','The cone stopped at 80% of its height (192), leaving a flat top a fifth the size of the base. Tick taper, twist or shape to make that part finish at the cut instead.',SB({top:80})],
+ ['7l','S-curve','Size follows 1 − smootherstep(u): holds its width at the base, drops through the middle and eases into a slim point, like a vase.',SB({taper:'scurve'})],
+ ['7m','Waist','Narrows to a fifth of its width at mid-height, flares back to about half, then closes: an hourglass that ends in a point.',SB({taper:'waist'})],
+ ['7n','Ripple','The cone pinched into five beads, each 40% deep; sliders set how many beads and how deep.',SB({taper:'ripple'})],
  ['7d','Elliptic','Size follows a quarter ellipse, √(1 − u²): full width most of the way up, then a rounded nose.',SB({taper:'ellip'})],
  ['7e','Cosine','Size follows cos(πu/2): a soft shoulder at the base and a pointed tip.',SB({taper:'cos'})],
  ['8','Parabolic (swell)','Size follows the parabola (1 − u)(1 + 3u): it grows to 1.33× a third of the way up, then shrinks to the tip, like a twisted flame.',SB({taper:'swell'})],
@@ -265,7 +267,7 @@ const SHEET=[
 ];
 // Mixer starting points = the contact sheet's variations (so they always match it) + combinations
 // the user's own combination (from their STL of 2026-11-15); the page opens on it, with x,y × 2.6
-const MINE=Object.assign({},BASE,{shape:'ellT',tip:'trilobe',t0:1.155,t1:1.045,taper:'hyper',copies:3,gap:55,wall:6.6,top:49,fT:false,fW:false,fS:true,baseOn:true,baseN:2});
+const MINE=Object.assign({},BASE,{shape:'ellT',tip:'trilobe',t0:1.155,t1:1.045,taper:'bessel',fl:1,copies:3,gap:55,wall:6.6,top:49,fT:false,fW:false,fS:true,baseOn:true,baseN:2});
 const PRESETS=SHEET.map(([n,name,,s])=>[n,name,s]).concat([
  ['C2','Three-strand braid',SB({copies:3,t0:5,t1:5})],
  ['C3','Triangle, twist speeds up',S_({shape:'triangle',t0:0,t1:5})],
@@ -288,7 +290,7 @@ function unit1(shape,phi){const c=Math.cos(phi),s=Math.sin(phi);
 // base shape → tip shape (u runs 0 to 1 over the height shown, so with a cutoff everything finishes at the cut)
 function unit(s,phi,u){const a=unit1(s.shape,phi);if(s.tip==='same'||s.tip===s.shape)return a;const b=unit1(s.tip,phi);return [a[0]+(b[0]-a[0])*u,a[1]+(b[1]-a[1])*u];}
 // power taper (1 − u)^pw: below 1 bows out (0.5 = a dome), 1 = the cone, above 1 bows in (2.5 = the bell)
-function rho(t,u,pw=2.5){switch(t){case 'cone':return R0*(1-u);case 'exp':return R0*Math.pow(100,-u);case 'pow':return R0*Math.pow(1-u,pw);case 'swell':return R0*(1-u)*(1+3*u);
+function rho(t,u,p){const P=typeof p==='object'&&p?p:{pw:p??2.5},pw=P.pw??2.5;switch(t){case 'cone':return R0*(1-u);case 'exp':return R0*Math.pow(100,-u);case 'pow':return R0*Math.pow(1-u,pw);case 'swell':return R0*(1-u)*(1+3*u);
     case 'hyper':return R0/(1+9*u);              // 1/x: 10 : 1 at the tip, so it stays open
     case 'hyperC':return R0*(1-u)/(1+9*u);       // the hyperbola less its tip size, rescaled: closes at the tip
     case 'ellip':return R0*Math.sqrt(1-u*u);     // quarter ellipse: full width held, then a rounded nose
@@ -297,11 +299,15 @@ function rho(t,u,pw=2.5){switch(t){case 'cone':return R0*(1-u);case 'exp':return
     case 'hyperT':return R0*10*(1-u)/(10-9*u);  // closed hyperbola turned: full width almost to the top, then a sharp close
     case 'log':return R0*(1-Math.log(1+9*u)/Math.LN10); // logarithmic: a fast start like the hyperbola, gentler after
     case 'logT':return R0*(10-Math.pow(10,u))/9; // log turned: an exponential that holds width and drops at the top
+    case 'bessel':return R0*Math.pow(1+9*u,-(P.fl??1)); // Bessel horn (1 + 9u)^−flare: flare 1 is the old Hyperbolic exactly; the tip is 10^−flare of the base
+    case 'scurve':return R0*(1-u*u*u*(10-15*u+6*u*u)); // S-curve (smootherstep): holds wide, drops through the middle, eases into a slim point
+    case 'waist':return R0*(1-Math.pow(u,6))*(0.6+0.4*Math.cos(TAU*u)); // waist: narrows to a fifth at mid-height, flares again to about half, then closes
+    case 'ripple':{const a=P.ra??0.4,n=P.rn??5;return R0*(1-u)*(1-a*(1-Math.cos(TAU*n*u))/2);} // ripple: n beads on the cone, each pinched in by a fraction a
   }}
 // rate goes steadily from t0 to t1 turns per height, so the turn so far is t0·u + (t1 − t0)·u²/2
 function theta(s,u){return TAU*(-0.095+s.t0*u+(s.t1-s.t0)*u*u/2);}
 const totalTurns=s=>(s.t0+s.t1)/2;
-function slice(s,u,n){const r=rho(s.taper,uf(s,'fT',u),s.pw),uS=uf(s,'fS',u),loc=[];let mx=Infinity;
+function slice(s,u,n){const r=rho(s.taper,uf(s,'fT',u),s),uS=uf(s,'fS',u),loc=[];let mx=Infinity;
   const kx=XY0*(s.k??(typeof K==='number'?K:1)); // width: XY0 × the x,y slider, part of the shape (and the STL), applied before the gap, wall and base
   for(let j=0;j<n;j++){const q=unit(s,j/n*TAU,uS);loc.push([q[0]*r*kx,q[1]*r*kx]);if(q[0]*r*kx<mx)mx=q[0]*r*kx;}
   const th=(s.dir===-1?-1:1)*theta(s,uf(s,'fW',u)),c=Math.cos(th),si=Math.sin(th); // dir −1: clockwise looking down z (a mirror image)
@@ -326,9 +332,10 @@ function volumes(s){const NZ=240,NT=96,rings=[];for(let i=0;i<=NZ;i++){const u=i
   const V=rs=>{let v=0;for(let i=0;i<rs.length-1;i++)v+=(Math.abs(area(rs[i][1]))+Math.abs(area(rs[i+1][1])))/2*(rs[i+1][0]-rs[i][0]);return v;};
   const solid=V(rings),hole=V(cavity(s,rings)),k=s.copies,b=s.baseOn?PI*baseRadius(s)**2*baseT(s):0;
   return {solid:solid*k+b,shown:(solid-hole)*k+b};}
-const innerOf=(s,u,pts)=>{const c=cen(pts),r=rho(s.taper,u,s.pw),k=Math.max(0,1-s.wall/Math.max(r,1e-9));return pts.map(q=>[c[0]+(q[0]-c[0])*k,c[1]+(q[1]-c[1])*k]);};
+const innerOf=(s,u,pts)=>{const c=cen(pts),r=rho(s.taper,u,s),k=Math.max(0,1-s.wall/Math.max(r,1e-9));return pts.map(q=>[c[0]+(q[0]-c[0])*k,c[1]+(q[1]-c[1])*k]);};
 
-const lbl=(g,v,s)=>{if(g==='taper'&&v==='pow'&&s)return `Power ${s.pw}${s.pw===2.5?' (bell)':s.pw===1?' (cone)':s.pw===0.5?' (dome)':''}`;const o=GROUPS.find(x=>x.key===g).opts.find(o=>o[0]===v);return o?o[1]:v;};
+const OLD={exp:'Geometric (horn)',hyper:'Hyperbolic',hyperC:'Closed hyperbola'}; // dropped from the buttons; still drawn for old saved combinations
+const lbl=(g,v,s)=>{if(g==='taper'&&v==='pow'&&s)return `Power ${s.pw}${s.pw===2.5?' (bell)':s.pw===1?' (cone)':s.pw===0.5?' (dome)':''}`;if(g==='taper'&&v==='bessel'&&s)return `Bessel horn, flare ${s.fl}`;if(g==='taper'&&v==='ripple'&&s)return `Ripple, ${s.rn} beads ${Math.round(s.ra*100)}% deep`;if(g==='taper'&&OLD[v])return OLD[v];const o=GROUPS.find(x=>x.key===g).opts.find(o=>o[0]===v);return o?o[1]:v;};
 function nameOf(s){const parts=[];
   parts.push(s.tip==='same'||s.tip===s.shape?lbl('shape',s.shape):`${lbl('shape',s.shape)} → ${lbl('shape',s.tip).toLowerCase()}`);
   if(!s.t0&&!s.t1)parts.push('no twist');else if(s.t0===s.t1)parts.push(`${s.t0} turn${s.t0===1?'':'s'}`);else parts.push(`twist ${s.t0} → ${s.t1} (${+totalTurns(s).toFixed(3)} turns)`);
@@ -469,8 +476,9 @@ function rebuild(fromPreset){
    ['fT','fW','fS'].forEach((k,i)=>{const c=document.getElementById(k);c.checked=on[i];c.disabled=!cut;});
    const fa=document.getElementById('fAll');fa.checked=on.every(x=>x);fa.indeterminate=on.some(x=>x)&&!fa.checked;fa.disabled=!cut;
    fa.closest('.finish').style.opacity=cut?'':'.5';}
-  {const pe=document.getElementById('pw');pe.value=st.pw;tx('pwout',String(st.pw));document.getElementById('powRow').hidden=st.taper!=='pow';
-   const pi=GROUPS.find(g=>g.key==='taper').opts.findIndex(o=>o[0]==='pow'),pb=document.getElementById('o-taper-'+pi);pb.querySelector('svg').outerHTML=taperIcon('pow',st.pw);}
+  {const S2=Object.assign({},BASE,st),opt=GROUPS.find(g=>g.key==='taper').opts.map(o=>o[0]);
+   TSL.forEach(([k,,t])=>{document.getElementById(k).value=S2[k];tx(k+'out',k==='ra'?Math.round(S2[k]*100)+'%':String(S2[k]));document.getElementById(k+'Row').hidden=st.taper!==t;});
+   ['pow','bessel','ripple'].forEach(t=>{const b=document.getElementById('o-taper-'+opt.indexOf(t));b.querySelector('svg').outerHTML=taperIcon(t,S2);});}
   [0,1,2,3,4,5].forEach(n=>document.getElementById('base-'+n).setAttribute('aria-pressed',n?(!!st.baseOn&&st.baseN===n):!st.baseOn));
   const [rows,far]=stats(st);
   document.getElementById('stats').innerHTML=rows.map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td></tr>`).join('');
@@ -519,14 +527,14 @@ gl.addEventListener('wheel',e=>{e.preventDefault();const r=gl.getBoundingClientR
 
 // ---------- mixer: five groups (Shape, Twist, Taper, Copies, Print), each with a reset ----------
 const mixer=document.getElementById('mixer');
-const SHORT={cone:'Cone',exp:'Horn',swell:'Swell',hyper:'Hyperbolic',hyperC:'Closed hyp.',hyperT:'Hyp. τ/4',log:'Log',logT:'Log τ/4',ellip:'Elliptic',cos:'Cosine',pow:'Power'};
+const SHORT={cone:'Cone',swell:'Swell',bessel:'Bessel horn',hyperT:'Hyp. τ/4',log:'Log',logT:'Log τ/4',ellip:'Elliptic',cos:'Cosine',pow:'Power',scurve:'S-curve',waist:'Waist',ripple:'Ripple'};
 // little pictures: a slice outline with the z axis dashed on its left; a taper's side profile up the axis
 function shapeIcon(k){const pts=[];for(let j=0;j<64;j++)pts.push(unit1(k,j/64*TAU));
   let x0=Infinity,x1=-Infinity,y0=Infinity,y1=-Infinity;pts.forEach(([x,y])=>{x0=Math.min(x0,x);x1=Math.max(x1,x);y0=Math.min(y0,y);y1=Math.max(y1,y);});
   const sc=30/Math.max(x1-x0,y1-y0),cx=(x0+x1)/2,cy=(y0+y1)/2,d=pts.map(([x,y],i)=>(i?'L':'M')+(20+(x-cx)*sc).toFixed(1)+' '+(20-(y-cy)*sc).toFixed(1)).join('')+'Z';
   const ax=(20+(x0-cx)*sc).toFixed(1);
   return `<svg viewBox="0 0 40 40" aria-hidden="true"><line class="axis" x1="${ax}" y1="2" x2="${ax}" y2="38"/><path class="fillc" d="${d}"/></svg>`;}
-function taperIcon(t,pw){const n=40,f=[];let m=0;for(let i=0;i<=n;i++){const v=rho(t,Math.min(i/n,0.9999),pw)/R0;f.push(v);m=Math.max(m,v);}
+function taperIcon(t,p){const n=t==='ripple'?120:40,f=[];let m=0;for(let i=0;i<=n;i++){const v=rho(t,Math.min(i/n,0.9999),p)/R0;f.push(v);m=Math.max(m,v);}
   const d='M5 37'+f.map((v,i)=>'L'+(5+30*v/m).toFixed(1)+' '+(37-34*i/n).toFixed(1)).join('')+'L5 3Z';
   return `<svg viewBox="0 0 40 40" aria-hidden="true"><line class="axis" x1="5" y1="1" x2="5" y2="39"/><path class="fillc" d="${d}"/></svg>`;}
 function section(id,title,reset){const sec=document.createElement('section');sec.className='gsec';sec.id='sec-'+id;
@@ -557,16 +565,17 @@ addRow(secTwist,'spread',slider('tb',-1,1,0.05,'slows','speeds up'));
  document.getElementById('tt').oninput=apply;document.getElementById('tb').oninput=apply;}
 
 // Taper: the curve the size follows up the height; Power brings its own slider
-const secTaper=section('taper','Taper',pick('taper','pw'));
-{const row=choiceRow(secTaper,'taper','curve',v=>taperIcon(v,v==='pow'?st.pw:2.5)),box=row.lastElementChild;
- // families by how the side bows against the straight cone (checked in Rust: sign of f(u) − (1 − u) at u = ¼, ½, ¾), mildest first
- const FAM=[['Straight',['cone','pow']],['Narrows fast, open tip',['hyper','exp']],['Narrows fast, pointed',['log','hyperC']],
-   ['Holds wide, then closes',['cos','logT','ellip','hyperT']],['Swells out',['swell']]];
+const secTaper=section('taper','Taper',pick('taper','pw','fl','rn','ra'));
+{const row=choiceRow(secTaper,'taper','curve',v=>taperIcon(v,Object.assign({},BASE,st))),box=row.lastElementChild;
+ // families by how the side bows against the straight cone (checked in Rust: sign of f(u) − (1 − u) at u = ¼, ½, ¾); the last family crosses it
+ const FAM=[['Straight',['cone','pow']],['Narrows fast',['bessel','log']],['Holds wide, then closes',['cos','logT','ellip','hyperT']],['Curves both ways',['scurve','swell','waist','ripple']]];
  const opts=GROUPS.find(g=>g.key==='taper').opts.map(o=>o[0]);
  FAM.forEach(([cap,ks])=>{const d=document.createElement('div');d.className='tfam';d.setAttribute('role','group');d.setAttribute('aria-label',cap);
    d.innerHTML=`<span class="cap">${cap}</span><div class="btns"></div>`;ks.forEach(k=>d.lastElementChild.appendChild(document.getElementById('o-taper-'+opts.indexOf(k))));box.appendChild(d);});}
-addRow(secTaper,'power',slider('pw',0.1,5,0.1,'dome','bell')).id='powRow';
-document.getElementById('pw').oninput=e=>{st.pw=+e.target.value;st.taper='pow';rebuild(false);};
+// each adjustable curve shows its own slider(s) only while it is chosen; moving one picks that curve
+const TSL=[['pw','power','pow',0.1,5,0.1,'dome','bell'],['fl','flare','bessel',0.2,4,0.1,'gentle','sharp'],['rn','beads','ripple',1,12,1,'few','many'],['ra','depth','ripple',0,0.9,0.05,'shallow','deep']];
+TSL.forEach(([k,lab,t,a,b,d,lo,hi])=>{const row=addRow(secTaper,lab,slider(k,a,b,d,lo,hi));row.id=k+'Row';row.dataset.taper=t;
+  document.getElementById(k).oninput=e=>{st[k]=+e.target.value;st.taper=t;rebuild(false);};});
 
 // Copies: how many, and how far each sits off the axis
 const secCopies=section('copies','Copies',pick('copies','gap'));
@@ -661,7 +670,7 @@ const route=()=>setMode('mixer'); // one page now: the mixer (the contact sheet 
 addEventListener('hashchange',route);
 PRESETS.forEach(([num,name,s],i)=>{const c=makeCard(num,name,resolve(s));c.onclick=()=>{st=resolve(PRESETS[i][2]);if(PRESETS[i][3]){K=PRESETS[i][3];document.getElementById('kxy').value=Math.round(100*Math.log10(K/0.1));document.getElementById('kxyout').textContent=K;}rebuild(true);document.querySelector('.view').scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'nearest'});};gal.appendChild(c);});
 let saved=[];
-try{saved=JSON.parse(localStorage.getItem('tcv-saved')||'[]');if(!Array.isArray(saved))saved=[];saved=saved.map(x=>{if(x.t0===undefined){const T=x.turns??1;const m={accel:[0,2*T],decel:[2*T,0]}[x.twist]||[T,T];x=Object.assign({},x,{t0:+m[0].toFixed(3),t1:+m[1].toFixed(3)});delete x.twist;delete x.turns;}const P={bell:2.5,p05:0.5,p08:0.8};if(x.top===undefined)x=Object.assign({},x,{top:100});if(x.taper in P)x=Object.assign({},x,{taper:'pow',pw:P[x.taper]});if(x.copies>5)x=Object.assign({},x,{copies:5});if(x.baseN>5)x=Object.assign({},x,{baseN:5});return Object.assign({},BASE,x,{build:'smooth'});});}catch(e){saved=[];}
+try{saved=JSON.parse(localStorage.getItem('tcv-saved')||'[]');if(!Array.isArray(saved))saved=[];saved=saved.map(x=>{if(x.t0===undefined){const T=x.turns??1;const m={accel:[0,2*T],decel:[2*T,0]}[x.twist]||[T,T];x=Object.assign({},x,{t0:+m[0].toFixed(3),t1:+m[1].toFixed(3)});delete x.twist;delete x.turns;}const P={bell:2.5,p05:0.5,p08:0.8};if(x.top===undefined)x=Object.assign({},x,{top:100});if(x.taper in P)x=Object.assign({},x,{taper:'pow',pw:P[x.taper]});if(x.copies>5)x=Object.assign({},x,{copies:5});if(x.taper==='hyper')x=Object.assign({},x,{taper:'bessel',fl:1});if(x.baseN>5)x=Object.assign({},x,{baseN:5});return Object.assign({},BASE,x,{build:'smooth'});});}catch(e){saved=[];}
 const persist=()=>{try{localStorage.setItem('tcv-saved',JSON.stringify(saved));return true;}catch(e){return false;}};
 function drawSaved(){savedBox.innerHTML='';saved.forEach((s,i)=>savedBox.appendChild(makeCard('Saved '+(i+1),nameOf(s),s)));
   document.getElementById('noSaved').hidden=saved.length>0;document.getElementById('clear').hidden=!saved.length;}
@@ -676,7 +685,7 @@ document.getElementById('clear').onclick=()=>{saved=[];persist();drawSaved();sta
 
 // favorites: the current combination plus its x,y width, kept in this browser; the star toggles the one on screen
 const favBox=document.getElementById('favs'),favBtn=document.getElementById('fav');let favs=[];
-try{favs=JSON.parse(localStorage.getItem('tcv-favs')||'[]');if(!Array.isArray(favs))favs=[];favs=favs.map(x=>Object.assign({},BASE,x));}catch(e){favs=[];}
+try{favs=JSON.parse(localStorage.getItem('tcv-favs')||'[]');if(!Array.isArray(favs))favs=[];favs=favs.map(x=>Object.assign({},BASE,x,x.taper==='hyper'?{taper:'bessel',fl:1}:{}));}catch(e){favs=[];}
 const fkey=o=>JSON.stringify(Object.keys(o).sort().map(k=>[k,o[k]]));
 const curFav=()=>Object.assign({},st,{k:K});
 const favIndex=()=>{const key=fkey(curFav());return favs.findIndex(f=>fkey(f)===key);};

@@ -7,16 +7,21 @@
 A cone, offset so one side runs up the z axis, and twisted around that axis. Every
 slice is level with the x/y plane and touches the z axis. The page is a mixer
 that combines slice shape, twist, the curve it tapers along, copies and a gap at
-the axis, starting from 31 variations shown as thumbnails; makes it hollow with a wall
+the axis, starting from 33 variations shown as thumbnails; makes it hollow with a wall
 from 0.2 to 20 mm thick (to print with less filament), cuts it off at 10% to 100% of its height (each of
 the taper, the twist and the shape change just stops there, or is ticked to finish at the cut), adds a circular base 1 to 5 layers of 3 mm thick, and
 downloads the shape as an STL file. An x,y slider sets the
 width from 0.1 to 100 times; at 1 the shapes are four times as wide as the first
 sweeps (about 150 mm out from the axis). Gap, wall and base stay true mm, all lit and turnable in 3D. The taper curves are
-linear (a cone), geometric (a horn), a power curve (1 − u)^k with k on a slider from
-0.1 to 5 (2.5 is a bell, 0.5 a dome), parabolic (a swell), hyperbolic, a closed hyperbola (the hyperbola shifted to end in a point), the
-closed hyperbola turned τ/4, logarithmic, the log turned τ/4 (an exponential),
-elliptic and cosine. Turning a curve τ/4 here means turning its profile a quarter
+grouped by shape. Straight: linear (a cone) and a power curve (1 − u)^k with k on a
+slider from 0.1 to 5 (2.5 is a bell, 0.5 a dome). Narrows fast: a Bessel horn
+(1 + 9u)^−f with the flare f on a slider from 0.2 to 4 (f = 1 is a hyperbola, open
+10 : 1 at the tip) and logarithmic. Holds wide, then closes: cosine, the log turned
+τ/4 (an exponential), elliptic and a closed hyperbola turned τ/4. Curves both ways:
+an S-curve (smootherstep), parabolic (a swell), a waist (an hourglass that closes)
+and a ripple of beads, with sliders for how many and how deep. Combinations saved
+with the old hyperbolic curve open as the Bessel horn at flare 1, which is the same
+curve. Turning a curve τ/4 here means turning its profile a quarter
 turn in the height-by-size square, so it bulges out where it used to bulge in.
 
 It grew in four steps, each kept as its own page:

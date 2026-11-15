@@ -55,10 +55,15 @@ fn rho(taper: &str, u: f64) -> f64 {
     let r0 = 16.33;
     // "pow:K" is the power slider, (1 - u)^K: 2.5 = the bell, 1 = the cone, 0.5 = the dome
     if let Some(k) = taper.strip_prefix("pow:") { return r0 * (1.0 - u).powf(k.parse::<f64>().unwrap()); }
+    // "bessel:F" is the Bessel horn (1 + 9u)^-F; "ripple:N:A" is N beads pinched in by a fraction A
+    if let Some(f) = taper.strip_prefix("bessel:") { return r0 * (1.0 + 9.0 * u).powf(-f.parse::<f64>().unwrap()); }
+    if let Some(na) = taper.strip_prefix("ripple:") { let mut it = na.split(':').map(|x| x.parse::<f64>().unwrap()); let (n, a) = (it.next().unwrap(), it.next().unwrap());
+        return r0 * (1.0 - u) * (1.0 - a * (1.0 - (TAU * n * u).cos()) / 2.0); }
     match taper { "cone" => r0 * (1.0 - u), "exp" => r0 * 100f64.powf(-u), "swell" => r0 * (1.0 - u) * (1.0 + 3.0 * u),
         "hyper" => r0 / (1.0 + 9.0 * u), "hyperC" => r0 * (1.0 - u) / (1.0 + 9.0 * u),
         "hyperT" => r0 * 10.0 * (1.0 - u) / (10.0 - 9.0 * u), "log" => r0 * (1.0 - (1.0 + 9.0 * u).ln() / 10f64.ln()),
-        "logT" => r0 * (10.0 - 10f64.powf(u)) / 9.0, "ellip" => r0 * (1.0 - u * u).sqrt(), "cos" => r0 * (PI * u / 2.0).cos(), _ => panic!() }
+        "logT" => r0 * (10.0 - 10f64.powf(u)) / 9.0, "ellip" => r0 * (1.0 - u * u).sqrt(), "cos" => r0 * (PI * u / 2.0).cos(),
+        "scurve" => r0 * (1.0 - u * u * u * (10.0 - 15.0 * u + 6.0 * u * u)), "waist" => r0 * (1.0 - u.powi(6)) * (0.6 + 0.4 * (TAU * u).cos()), _ => panic!() }
 }
 // twist rate runs steadily from t0 to t1 turns per full height
 fn theta(v: &V, u: f64) -> f64 { TAU * (-0.095 + v.t0 * u + (v.t1 - v.t0) * u * u / 2.0) }
@@ -179,10 +184,26 @@ fn main() {
     check("hollow circle cone at the original width (x,y x0.25): shell volume, mm3", solid - cav, 66661.0, 1.0);
     check("hollow ellipse 1:2 cone 1.2 mm at the original width (x,y x0.25): 84% saved (mesh 105970 of 650868)", (100.0f64 * (1.0 - 105970.0 / 650868.0)).round(), 84.0, 0.0);
     // tapers: base size and size at the tip
-    for (t, tip) in [("cone", 0.0), ("exp", 0.1633), ("pow:2.5", 0.0), ("pow:0.1", 0.0), ("pow:5", 0.0), ("swell", 0.0), ("hyper", 1.633), ("hyperC", 0.0), ("hyperT", 0.0), ("log", 0.0), ("logT", 0.0), ("ellip", 0.0), ("cos", 0.0)] {
+    for (t, tip) in [("cone", 0.0), ("exp", 0.1633), ("pow:2.5", 0.0), ("pow:0.1", 0.0), ("pow:5", 0.0), ("swell", 0.0), ("hyper", 1.633), ("hyperC", 0.0), ("hyperT", 0.0), ("log", 0.0), ("logT", 0.0), ("ellip", 0.0), ("cos", 0.0),
+        ("bessel:1", 1.633), ("bessel:2", 0.1633), ("bessel:0.5", 16.33 / 10f64.sqrt()), ("scurve", 0.0), ("waist", 0.0), ("ripple:5:0.4", 0.0), ("ripple:12:0.9", 0.0)] {
         check(&format!("taper {t}: size at base"), rho(t, 0.0), 16.33, 1e-12);
         check(&format!("taper {t}: size at tip"), rho(t, 1.0), tip, 1e-9);
     }
+
+    // Bessel horn at flare 1 is the old Hyperbolic exactly (saved combinations move over to it)
+    let mut g = 0.0f64; for i in 0..=1000 { let u = i as f64 / 1000.0; g = g.max((rho("bessel:1", u) - rho("hyper", u)).abs()); }
+    check("Bessel horn flare 1 == Hyperbolic, worst gap", g, 0.0, 1e-12);
+    // waist: a fifth of the width at mid-height (0.6 - 0.4 = 0.2, less 1/64 of it), flaring back to 0.536 near u = 0.815
+    check("waist at mid-height / base", rho("waist", 0.5) / 16.33, 0.2 * (1.0 - 1.0 / 64.0), 1e-12);
+    let (mut wm, mut wu) = (0.0f64, 0.0); for i in 500..=1000 { let u = i as f64 / 1000.0; let v = rho("waist", u) / 16.33; if v > wm { wm = v; wu = u; } }
+    check("waist flares back to (fraction of base)", (wm * 1000.0).round() / 1000.0, 0.536, 0.0);
+    check("waist flare peak at u", wu, 0.815, 0.0);
+    // ripple never pokes outside the cone, and touches zero width between beads only at depth 1
+    let mut over = 0.0f64; for i in 0..=2000 { let u = i as f64 / 2000.0; over = over.max(rho("ripple:5:0.4", u) - 16.33 * (1.0 - u)); }
+    check("ripple 5 x 0.4: furthest outside the cone, mm", over, 0.0, 1e-12);
+    // S-curve crosses the cone at mid-height: wider below, narrower above
+    check("S-curve at u = 1/4 minus cone (fraction)", ((rho("scurve", 0.25) / 16.33 - 0.75) * 1e4).round() / 1e4, 0.1465, 0.0);
+    check("S-curve at u = 1/2 (fraction)", rho("scurve", 0.5) / 16.33, 0.5, 1e-12);
 
     let f = unsafe { FAILS };
     if f > 0 { eprintln!("{f} check(s) failed"); std::process::exit(1); }
