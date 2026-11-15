@@ -180,9 +180,8 @@ const GROUPS=[
  {key:'shape',label:'at base',opts:SHAPES},
  {key:'tip',label:'at tip',opts:[['same','Same'],...SHAPES]},
 // twist rate at the base and at the tip, in turns per full height; the rate changes steadily in between
- {key:'t0',label:'start turns',opts:[[0,'0'],[0.3,'0.3'],[0.5,'0.5'],[1,'1'],[2,'2'],[3,'3'],[5,'5']]},
- {key:'t1',label:'end turns',opts:[[0,'0'],[0.3,'0.3'],[0.5,'0.5'],[1,'1'],[2,'2'],[3,'3'],[5,'5']]},
  {key:'taper',label:'taper',opts:[['cone','Linear (cone)'],['exp','Geometric (horn)'],['pow','Power'],['swell','Parabolic (swell)'],['hyper','Hyperbolic'],['hyperC','Closed hyperbola'],['hyperT','Hyperbola turned τ/4'],['log','Logarithmic'],['logT','Log turned τ/4'],['ellip','Elliptic'],['cos','Cosine']]},
+ {key:'copies',label:'copies',opts:[[1,'1'],[2,'2'],[3,'3'],[4,'4'],[5,'5']]},
 ];
 const BASE={shape:'ellT',tip:'same',t0:1,t1:1,taper:'cone',copies:1,gap:0,wall:0,build:'smooth',baseOn:false,baseN:10,pw:2.5,top:100,fT:false,fW:false,fS:false};
 // cutoff: the whole shape (taper, twist, shape change) is fitted into top % of the height
@@ -411,7 +410,7 @@ function rebuild(fromPreset){
   GROUPS.forEach(g=>g.opts.forEach(([v],i)=>document.getElementById(`o-${g.key}-${i}`).setAttribute('aria-pressed',st[g.key]===v)));
   document.getElementById('pname').textContent=nameOf(st);
   {const we=document.getElementById('wall');we.value=st.wall;document.getElementById('wallout').textContent=st.wall?st.wall.toFixed(1)+' mm':'solid';}
-  {const ce=document.getElementById('copies');ce.value=st.copies;document.getElementById('copiesout').textContent=st.copies;}
+  ['t0','t1'].forEach(k=>{const e=document.getElementById(k);e.value=st[k];document.getElementById(k+'out').textContent=(+st[k].toFixed(2))+' turns/height';});
   {const ge=document.getElementById('gap');ge.value=st.gap;document.getElementById('gapout').textContent=st.gap?st.gap+' mm':'touching';}
   {const te=document.getElementById('top');te.value=st.top;document.getElementById('topout').textContent=st.top+'%';['fT','fW','fS'].forEach(k=>{const c=document.getElementById(k);c.checked=st[k]!==false;c.disabled=st.top>=100;});}
   {const pe=document.getElementById('pw');pe.value=st.pw;document.getElementById('pwout').textContent=st.pw+(st.taper==='pow'?'':' (pick Power to use)');}
@@ -468,13 +467,13 @@ GROUPS.forEach(g=>{const row=document.createElement('div');row.className='row';
   g.opts.forEach(([v,t],i)=>{const b=document.createElement('button');b.id=`o-${g.key}-${i}`;b.textContent=t;b.setAttribute('aria-pressed','false');
     b.onclick=()=>{st[g.key]=v;rebuild(false);};box.appendChild(b);});
   mixer.appendChild(row);});
-{const row=document.createElement('div');row.className='row';row.id='copiesRow';
-  row.innerHTML=`<span>copies</span><div class="opts"><label class="baseN" for="copies">round the axis <input id="copies" type="range" min="1" max="10" step="1" value="1"> <output id="copiesout">1</output></label></div>`;
-  mixer.querySelector('#o-taper-0').closest('.row').after(row);
-  const ce=document.getElementById('copies');ce.oninput=()=>{st.copies=Math.round(+ce.value);rebuild(false);};}
+[['t0','start turns','at the base'],['t1','end turns','at the tip']].reverse().forEach(([k,lab,hint])=>{const row=document.createElement('div');row.className='row';
+  row.innerHTML=`<span>${lab}</span><div class="opts"><label class="baseN" for="${k}">${hint} <input id="${k}" type="range" min="0" max="5" step="0.1" value="1"> <output id="${k}out">1</output></label></div>`;
+  mixer.querySelector('#o-tip-0').closest('.row').after(row);
+  const e=document.getElementById(k);e.oninput=()=>{st[k]=+e.value;rebuild(false);};});
 {const row=document.createElement('div');row.className='row';
   row.innerHTML=`<span>gap</span><div class="opts"><label class="baseN" for="gap">from the axis <input id="gap" type="range" min="0" max="200" step="0.5" value="0"> <output id="gapout">touching</output></label></div>`;
-  document.getElementById('copiesRow').after(row);
+  mixer.querySelector('#o-copies-0').closest('.row').after(row);
   const ge=document.getElementById('gap');ge.oninput=()=>{st.gap=+ge.value;rebuild(false);};}
 {const row=document.createElement('div');row.className='row';row.id='powRow';
   row.innerHTML=`<span>power</span><div class="opts"><label class="baseN" for="pw">(1 − u)^ <input id="pw" type="range" min="0.1" max="5" step="0.1" value="2.5"> <output id="pwout">2.5</output></label></div>`;
@@ -572,7 +571,7 @@ document.getElementById('tab-sheet').onclick=()=>{location.hash='#sheet';};
 document.getElementById('tab-mixer').onclick=()=>{location.hash='#mixer';};
 PRESETS.forEach(([num,name,s],i)=>{const c=makeCard(num,name,resolve(s));c.onclick=()=>{st=resolve(PRESETS[i][2]);rebuild(true);document.querySelector('.view').scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'nearest'});};gal.appendChild(c);});
 let saved=[];
-try{saved=JSON.parse(localStorage.getItem('tcv-saved')||'[]');if(!Array.isArray(saved))saved=[];saved=saved.map(x=>{if(x.t0===undefined){const T=x.turns??1;const m={accel:[0,2*T],decel:[2*T,0]}[x.twist]||[T,T];x=Object.assign({},x,{t0:+m[0].toFixed(3),t1:+m[1].toFixed(3)});delete x.twist;delete x.turns;}const P={bell:2.5,p05:0.5,p08:0.8};if(x.top===undefined)x=Object.assign({},x,{top:100});if(x.taper in P)x=Object.assign({},x,{taper:'pow',pw:P[x.taper]});return Object.assign({},BASE,x,{build:'smooth'});});}catch(e){saved=[];}
+try{saved=JSON.parse(localStorage.getItem('tcv-saved')||'[]');if(!Array.isArray(saved))saved=[];saved=saved.map(x=>{if(x.t0===undefined){const T=x.turns??1;const m={accel:[0,2*T],decel:[2*T,0]}[x.twist]||[T,T];x=Object.assign({},x,{t0:+m[0].toFixed(3),t1:+m[1].toFixed(3)});delete x.twist;delete x.turns;}const P={bell:2.5,p05:0.5,p08:0.8};if(x.top===undefined)x=Object.assign({},x,{top:100});if(x.taper in P)x=Object.assign({},x,{taper:'pow',pw:P[x.taper]});if(x.copies>5)x=Object.assign({},x,{copies:5});return Object.assign({},BASE,x,{build:'smooth'});});}catch(e){saved=[];}
 const persist=()=>{try{localStorage.setItem('tcv-saved',JSON.stringify(saved));return true;}catch(e){return false;}};
 function drawSaved(){savedBox.innerHTML='';saved.forEach((s,i)=>savedBox.appendChild(makeCard('Saved '+(i+1),nameOf(s),s)));
   document.getElementById('noSaved').hidden=saved.length>0;document.getElementById('clear').hidden=!saved.length;}
