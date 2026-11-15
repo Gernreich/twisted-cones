@@ -173,7 +173,7 @@ fn main() {
     let cav = PI * (rr - w).powi(2) * ZT * (1.0 - w / rr) / 3.0;
     check("hollow circle cone: solid volume, mm3", solid, 325731.0, 1.0);
     check("hollow circle cone: shell volume, mm3", solid - cav, 66661.0, 1.0);
-    check("hollow ellipse 1:2 cone 1.2 mm: page says 84% saved (mesh 105469 of 650868)", (100.0 * (1.0 - 105469.0 / 650868.0)).round(), 84.0, 0.0);
+    check("hollow ellipse 1:2 cone 1.2 mm: page says 84% saved (mesh 105469 of 650868)", (100.0f64 * (1.0 - 105469.0 / 650868.0)).round(), 84.0, 0.0);
     // tapers: base size and size at the tip
     for (t, tip) in [("cone", 0.0), ("exp", 0.1633), ("pow:2.5", 0.0), ("pow:0.1", 0.0), ("pow:5", 0.0), ("swell", 0.0), ("hyper", 1.633), ("hyperC", 0.0), ("hyperT", 0.0), ("log", 0.0), ("logT", 0.0), ("ellip", 0.0), ("cos", 0.0)] {
         check(&format!("taper {t}: size at base"), rho(t, 0.0), 16.33, 1e-12);
