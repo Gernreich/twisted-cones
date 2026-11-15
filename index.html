@@ -547,7 +547,9 @@ function choiceRow(sec,key,label,icon){const g=GROUPS.find(x=>x.key===key),row=a
     b.onclick=()=>{st[key]=v;rebuild(false);};box.appendChild(b);});return row;}
 const slider=(id,min,max,step,left,right)=>`<label class="baseN" for="${id}"><span class="lo">${left}</span> <input id="${id}" type="range" min="${min}" max="${max}" step="${step}"> <span class="hi">${right}</span> <b class="val" id="${id}out"></b></label>`;
 function setK(k){if(k!==K)setTimeout(renderAllThumbs,0);K=k;document.getElementById('kxy').value=Math.round(100*Math.log10(K/0.1));document.getElementById('kxyout').textContent=K;}
-const pick=(...ks)=>()=>ks.forEach(k=>st[k]=BASE[k]);
+// what the resets go back to: a plain circle cone, circle at both ends, no twist (BASE itself stays as the starting points' base)
+const RESET=Object.assign({},BASE,{shape:'circle',tip:'circle',t0:0,t1:0,dir:1});
+const pick=(...ks)=>()=>ks.forEach(k=>st[k]=RESET[k]);
 
 // Shape: the slice at the base and at the tip, and the width (the width row is moved in by setMode)
 const secShape=section('shape','Shape',()=>{pick('shape','tip')();setK(1);});
@@ -598,7 +600,7 @@ document.getElementById('wall').oninput=e=>{st.wall=+e.target.value;rebuild(fals
  row.lastElementChild.setAttribute('role','group');row.lastElementChild.setAttribute('aria-label','Circular base thickness, 3 mm layers');
  [0,1,2,3,4,5].forEach(n=>{document.getElementById('base-'+n).onclick=()=>{if(n){st.baseOn=true;st.baseN=n;}else st.baseOn=false;rebuild(false);};});}
 {const d=document.createElement('div');d.className='allrow';d.innerHTML='<button type="button" id="resetAll">↺ Reset all</button>';mixer.appendChild(d);
- document.getElementById('resetAll').onclick=()=>{st=Object.assign({},BASE);setK(1);rebuild(false);};}
+ document.getElementById('resetAll').onclick=()=>{st=Object.assign({},RESET);setK(1);rebuild(false);};}
 
 // ---------- STL: the shape as shown, at true size in mm (no x,y stretch), copies and base included ----------
 function stlFor(s){const g=geomFor(s),grp=groupFor(s,g),tris=[];grp.updateMatrixWorld(true);
