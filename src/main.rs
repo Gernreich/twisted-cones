@@ -54,7 +54,7 @@ fn unit(v: &V, phi: f64, u: f64) -> (f64, f64) {
 fn rho(taper: &str, u: f64) -> f64 {
     let r0 = 16.33;
     match taper { "cone" => r0 * (1.0 - u), "exp" => r0 * 100f64.powf(-u), "bell" => r0 * (1.0 - u).powf(2.5), "swell" => r0 * (1.0 - u) * (1.0 + 3.0 * u),
-        "hyper" => r0 / (1.0 + 9.0 * u), "ellip" => r0 * (1.0 - u * u).sqrt(), "cos" => r0 * (PI * u / 2.0).cos(), _ => panic!() }
+        "hyper" => r0 / (1.0 + 9.0 * u), "hyperC" => r0 * (1.0 - u) / (1.0 + 9.0 * u), "ellip" => r0 * (1.0 - u * u).sqrt(), "cos" => r0 * (PI * u / 2.0).cos(), _ => panic!() }
 }
 // twist rate runs steadily from t0 to t1 turns per full height
 fn theta(v: &V, u: f64) -> f64 { TAU * (-0.095 + v.t0 * u + (v.t1 - v.t0) * u * u / 2.0) }
@@ -140,8 +140,12 @@ fn main() {
     check("start 0 end 2 == turn u^2, worst gap", a, 0.0, 1e-12);
     check("start 2 end 0 == turn 1-(1-u)^2, worst gap", d, 0.0, 1e-12);
     check("start 0 end 5: total turns", (theta(&V { t0: 0.0, t1: 5.0, ..b }, 1.0) - theta(&b, 0.0)) / TAU, 2.5, 1e-12);
+    // closed hyperbola = hyperbolic less its tip size, rescaled to full width at the base
+    let mut g = 0f64;
+    for i in 0..=1000 { let u = i as f64 / 1000.0; g = g.max((rho("hyperC", u) - (rho("hyper", u) - 1.633) / (16.33 - 1.633) * 16.33).abs()); }
+    check("closed hyperbola == hyperbolic less its tip, worst gap", g, 0.0, 1e-9);
     // tapers: base size and size at the tip
-    for (t, tip) in [("cone", 0.0), ("exp", 0.1633), ("bell", 0.0), ("swell", 0.0), ("hyper", 1.633), ("ellip", 0.0), ("cos", 0.0)] {
+    for (t, tip) in [("cone", 0.0), ("exp", 0.1633), ("bell", 0.0), ("swell", 0.0), ("hyper", 1.633), ("hyperC", 0.0), ("ellip", 0.0), ("cos", 0.0)] {
         check(&format!("taper {t}: size at base"), rho(t, 0.0), 16.33, 1e-12);
         check(&format!("taper {t}: size at tip"), rho(t, 1.0), tip, 1e-9);
     }

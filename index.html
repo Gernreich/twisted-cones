@@ -179,7 +179,7 @@ const GROUPS=[
 // twist rate at the base and at the tip, in turns per full height; the rate changes steadily in between
  {key:'t0',label:'start turns',opts:[[0,'0'],[0.3,'0.3'],[0.5,'0.5'],[1,'1'],[2,'2'],[3,'3'],[5,'5']]},
  {key:'t1',label:'end turns',opts:[[0,'0'],[0.3,'0.3'],[0.5,'0.5'],[1,'1'],[2,'2'],[3,'3'],[5,'5']]},
- {key:'taper',label:'taper',opts:[['cone','Linear (cone)'],['exp','Geometric (horn)'],['bell','Power 2.5 (bell)'],['swell','Parabolic (swell)'],['hyper','Hyperbolic'],['ellip','Elliptic'],['cos','Cosine']]},
+ {key:'taper',label:'taper',opts:[['cone','Linear (cone)'],['exp','Geometric (horn)'],['bell','Power 2.5 (bell)'],['swell','Parabolic (swell)'],['hyper','Hyperbolic'],['hyperC','Closed hyperbola'],['ellip','Elliptic'],['cos','Cosine']]},
  {key:'copies',label:'copies',opts:[[1,'1'],[2,'2'],[3,'3']]},
  {key:'gap',label:'gap',opts:[[0,'Touching'],[1,'1 mm'],[2,'2 mm'],[4,'4 mm'],[6,'6 mm'],[8,'8 mm'],[12,'12 mm'],[16,'16 mm']]},
 ];
@@ -203,6 +203,7 @@ const SHEET=[
  ['7a','Geometric (horn)','Size falls by the same fraction for each step up, 100 : 1 overall, so the tip stays open.',SB({taper:'exp'})],
  ['7b','Power 2.5 (bell)','Size follows (1 − u)^2.5: a wide bell at the base that narrows quickly, then a long slim neck.',SB({taper:'bell'})],
  ['7c','Hyperbolic','Size follows 1/(1 + 9u): it narrows fastest near the base, then slowly, ending 10 : 1 with the tip open.',SB({taper:'hyper'})],
+ ['7c2','Closed hyperbola','Size follows (1 − u)/(1 + 9u): the hyperbola with its tip size taken away and stretched back to full width, so the same sharp start ends in a point.',SB({taper:'hyperC'})],
  ['7d','Elliptic','Size follows a quarter ellipse, √(1 − u²): full width most of the way up, then a rounded nose.',SB({taper:'ellip'})],
  ['7e','Cosine','Size follows cos(πu/2): a soft shoulder at the base and a pointed tip.',SB({taper:'cos'})],
  ['8','Parabolic (swell)','Size follows the parabola (1 − u)(1 + 3u): it grows to 1.33× a third of the way up, then shrinks to the tip, like a twisted flame.',SB({taper:'swell'})],
@@ -233,6 +234,7 @@ function unit1(shape,phi){const c=Math.cos(phi),s=Math.sin(phi);
 function unit(s,phi,u){const a=unit1(s.shape,phi);if(s.tip==='same'||s.tip===s.shape)return a;const b=unit1(s.tip,phi);return [a[0]+(b[0]-a[0])*u,a[1]+(b[1]-a[1])*u];}
 function rho(t,u){switch(t){case 'cone':return R0*(1-u);case 'exp':return R0*Math.pow(100,-u);case 'bell':return R0*Math.pow(1-u,2.5);case 'swell':return R0*(1-u)*(1+3*u);
     case 'hyper':return R0/(1+9*u);              // 1/x: 10 : 1 at the tip, so it stays open
+    case 'hyperC':return R0*(1-u)/(1+9*u);       // the hyperbola less its tip size, rescaled: closes at the tip
     case 'ellip':return R0*Math.sqrt(1-u*u);     // quarter ellipse: full width held, then a rounded nose
     case 'cos':return R0*Math.cos(PI*u/2);       // cosine: a soft shoulder and a pointed tip
   }}
