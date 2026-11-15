@@ -247,7 +247,8 @@ function unit1(shape,phi){const c=Math.cos(phi),s=Math.sin(phi);
     case 'triangle':{const n=3,psi=((phi-PI)%(TAU/n)+TAU/n)%(TAU/n),r=Math.cos(PI/n)/Math.cos(psi-PI/n);return [r*c,r*s];}
     case 'trilobe':{const r=1+0.35*Math.cos(3*(phi-PI));return [r*c,r*s];}
   }}
-function unit(s,phi,u){const a=unit1(s.shape,phi);if(s.tip==='same'||s.tip===s.shape)return a;const b=unit1(s.tip,phi);return [a[0]+(b[0]-a[0])*u,a[1]+(b[1]-a[1])*u];}
+// base shape → tip shape; with a cutoff the change finishes at the cut, so the flat top is the tip shape
+function unit(s,phi,u){const a=unit1(s.shape,phi);if(s.tip==='same'||s.tip===s.shape)return a;const b=unit1(s.tip,phi),k=Math.min(1,u*100/(s.top??100));return [a[0]+(b[0]-a[0])*k,a[1]+(b[1]-a[1])*k];}
 // power taper (1 − u)^pw: below 1 bows out (0.5 = a dome), 1 = the cone, above 1 bows in (2.5 = the bell)
 function rho(t,u,pw=2.5){switch(t){case 'cone':return R0*(1-u);case 'exp':return R0*Math.pow(100,-u);case 'pow':return R0*Math.pow(1-u,pw);case 'swell':return R0*(1-u)*(1+3*u);
     case 'hyper':return R0/(1+9*u);              // 1/x: 10 : 1 at the tip, so it stays open
