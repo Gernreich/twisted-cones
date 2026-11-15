@@ -123,7 +123,7 @@ body{font-size:14px;line-height:1.4}
     </div>
     <aside class="side">
       <div class="row" id="stretchRow"><span>x,y ×</span><div class="opts" role="group" aria-label="Stretch x and y">
-        <label class="baseN" for="kxy">width <input id="kxy" type="range" min="0" max="300" step="1" value="100"> <output id="kxyout">1</output></label>
+        <label class="baseN" for="kxy">width <input id="kxy" type="range" min="0" max="300" step="1" value="141"> <output id="kxyout">2.6</output></label>
       </div></div>
       <div id="sheetSide">
         <h3 id="snum"></h3>
@@ -241,13 +241,16 @@ const SHEET=[
  ['11','Hollow, 1.2 mm wall','The cone as a 1.2 mm shell for printing: open underneath, sealed near the tip where the slice gets too thin for the wall.',SB({wall:1.2})],
 ];
 // Mixer starting points = the contact sheet's variations (so they always match it) + combinations
+// the user's own combination (from their STL of 2026-11-15); the page opens on it, with x,y × 2.6
+const MINE=Object.assign({},BASE,{shape:'ellT',tip:'trilobe',t0:1.155,t1:1.045,taper:'hyper',copies:3,gap:55,wall:6.6,top:49,fT:false,fW:false,fS:true,baseOn:true,baseN:2});
 const PRESETS=SHEET.map(([n,name,,s])=>[n,name,s]).concat([
  ['C2','Three-strand braid',SB({copies:3,t0:5,t1:5})],
  ['C3','Triangle, twist speeds up',S_({shape:'triangle',t0:0,t1:5})],
+ ['M','Your settings',MINE,2.6],
 ]);
 let baseShape='ellT',tabMode='sheet',sheetSel=1;
 const resolve=s=>s.shape==='base'?Object.assign({},s,{shape:baseShape}):Object.assign({},s);
-let st=resolve(SHEET[1][3]);
+let st=Object.assign({},MINE);
 
 const scaleOf=s=>s.build==='l4'?0.25:1;
 function unit1(shape,phi){const c=Math.cos(phi),s=Math.sin(phi);
@@ -413,7 +416,7 @@ function aimCam(cam,b,Cz,W,H,S,px,py){
 // ---------- large view ----------
 const gl=document.getElementById('gl'),ov=document.getElementById('ov'),octx=ov.getContext('2d');
 const scene=makeScene(),cam=new THREE.OrthographicCamera(-1,1,1,-1,1,20000),holder=new THREE.Group();scene.add(holder);
-let plate=null,axes=null,cur=null,curGeo=null,curFar=40;var K=1; // var: slice() reads it, and may run before this line
+let plate=null,axes=null,cur=null,curGeo=null,curFar=40;var K=2.6; // var: slice() reads it, and may run before this line
 let yaw=-0.75,pitch=0.3,zoom=1,panX=0,panY=0,anim=null,W=1,H=1,S=1,Cz=120;
 const views={iso:[-0.75,0.3],front:[0,0],side:[-PI/2,0],top:[0,PI/2],under:[-0.75,-0.6]};
 function buildAxes(){if(axes)scene.remove(axes);
@@ -594,11 +597,11 @@ function setMode(m){tabMode=m;const mix=m==='mixer';
   ['sub-sheet','sheetSide','secSheet'].forEach(id=>document.getElementById(id).hidden=mix);
   document.getElementById('mixSide').style.display=mix?'grid':'none';
   if(!mix)showSheet(sheetSel);else rebuild(false);}
-const route=()=>setMode(location.hash==='#mixer'?'mixer':'sheet');
+const route=()=>setMode(location.hash==='#sheet'?'sheet':'mixer'); // opens on the mixer, with the user's settings
 addEventListener('hashchange',route);
 document.getElementById('tab-sheet').onclick=()=>{location.hash='#sheet';};
 document.getElementById('tab-mixer').onclick=()=>{location.hash='#mixer';};
-PRESETS.forEach(([num,name,s],i)=>{const c=makeCard(num,name,resolve(s));c.onclick=()=>{st=resolve(PRESETS[i][2]);rebuild(true);document.querySelector('.view').scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'nearest'});};gal.appendChild(c);});
+PRESETS.forEach(([num,name,s],i)=>{const c=makeCard(num,name,resolve(s));c.onclick=()=>{st=resolve(PRESETS[i][2]);if(PRESETS[i][3]){K=PRESETS[i][3];document.getElementById('kxy').value=Math.round(100*Math.log10(K/0.1));document.getElementById('kxyout').textContent=K;}rebuild(true);document.querySelector('.view').scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'nearest'});};gal.appendChild(c);});
 let saved=[];
 try{saved=JSON.parse(localStorage.getItem('tcv-saved')||'[]');if(!Array.isArray(saved))saved=[];saved=saved.map(x=>{if(x.t0===undefined){const T=x.turns??1;const m={accel:[0,2*T],decel:[2*T,0]}[x.twist]||[T,T];x=Object.assign({},x,{t0:+m[0].toFixed(3),t1:+m[1].toFixed(3)});delete x.twist;delete x.turns;}const P={bell:2.5,p05:0.5,p08:0.8};if(x.top===undefined)x=Object.assign({},x,{top:100});if(x.taper in P)x=Object.assign({},x,{taper:'pow',pw:P[x.taper]});if(x.copies>5)x=Object.assign({},x,{copies:5});if(x.baseN>5)x=Object.assign({},x,{baseN:5});return Object.assign({},BASE,x,{build:'smooth'});});}catch(e){saved=[];}
 const persist=()=>{try{localStorage.setItem('tcv-saved',JSON.stringify(saved));return true;}catch(e){return false;}};
