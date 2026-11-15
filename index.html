@@ -432,7 +432,8 @@ function rebuild(fromPreset){
   GROUPS.forEach(g=>g.opts.forEach(([v],i)=>document.getElementById(`o-${g.key}-${i}`).setAttribute('aria-pressed',st[g.key]===v)));
   document.getElementById('pname').textContent=nameOf(st);
   {const we=document.getElementById('wall');we.value=st.wall;document.getElementById('wallout').textContent=st.wall?st.wall.toFixed(1)+' mm':'solid';}
-  ['t0','t1'].forEach(k=>{const e=document.getElementById(k);e.value=st[k];document.getElementById(k+'out').textContent=+st[k].toFixed(2);});
+  {const T=turnsOf(st),b=spreadOf(st);document.getElementById('tt').value=T;document.getElementById('tb').value=b;document.getElementById('ttout').textContent=+T.toFixed(2);
+   document.getElementById('tbout').textContent=Math.abs(b)<0.001?'even':`${b<0?'slows':'speeds up'}: ${+st.t0.toFixed(2)} at the base → ${+st.t1.toFixed(2)} at the tip, turns per height`;}
   {const ge=document.getElementById('gap');ge.value=st.gap;document.getElementById('gapout').textContent=st.gap?st.gap+' mm':'touching';}
   {const te=document.getElementById('top');te.value=st.top;document.getElementById('topout').textContent=st.top+'%';['fT','fW','fS'].forEach(k=>{const c=document.getElementById(k);c.checked=st[k]!==false;c.disabled=st.top>=100;});}
   {const pe=document.getElementById('pw');pe.value=st.pw;document.getElementById('pwout').textContent=st.pw+(st.taper==='pow'?' (in use)':' (move to use)');}
@@ -491,12 +492,15 @@ GROUPS.forEach(g=>{const row=document.createElement('div');row.className='row';
   g.opts.forEach(([v,t],i)=>{const b=document.createElement('button');b.id=`o-${g.key}-${i}`;b.textContent=t;b.setAttribute('aria-pressed','false');
     b.onclick=()=>{st[g.key]=v;rebuild(false);};box.appendChild(b);});
   mixer.appendChild(row);});
-// twist rate at the base (round handle) and at the tip (square handle) on one track; the handles may pass each other
-{const row=document.createElement('div');row.className='row';
-  row.innerHTML=`<span>turns</span><div class="opts"><div class="baseN"><span class="dual"><input id="t0" type="range" min="0" max="5" step="0.1" value="1" aria-label="Turns per height at the base"><input id="t1" type="range" min="0" max="5" step="0.1" value="1" aria-label="Turns per height at the tip"></span></div><div class="dualout"><span>● base <output id="t0out">1</output></span><span>■ tip <output id="t1out">1</output></span><span>turns per height</span></div></div>`;
-  mixer.querySelector('#o-tip-0').closest('.row').after(row);
-  ['t0','t1'].forEach(k=>{const e=document.getElementById(k);e.oninput=()=>{st[k]=+e.value;rebuild(false);};
-    e.addEventListener('pointerdown',()=>{document.getElementById('t0').style.zIndex=k==='t0'?2:1;document.getElementById('t1').style.zIndex=k==='t1'?2:1;});});}
+// twist as total turns plus a spread: the rate runs linearly from T(1 − b) at the base to T(1 + b) at the tip,
+// so b = −1 slows to a stop at the tip, 0 is even, +1 starts still and speeds up; the state keeps t0 and t1
+const turnsOf=s=>(s.t0+s.t1)/2, spreadOf=s=>{const T=turnsOf(s);return T?(s.t1-s.t0)/(2*T):0;};
+{const mk=(id,lab,inner)=>{const row=document.createElement('div');row.className='row';row.innerHTML=`<span>${lab}</span><div class="opts">${inner}</div>`;return row;};
+  const rT=mk('tt','turns','<label class="baseN" for="tt">total <input id="tt" type="range" min="0" max="5" step="0.05" value="1"> <output id="ttout">1</output></label>');
+  const rB=mk('tb','twist spread','<label class="baseN" for="tb">slows <input id="tb" type="range" min="-1" max="1" step="0.05" value="0"> speeds</label><div class="dualout"><span id="tbout">even</span></div>');
+  mixer.querySelector('#o-tip-0').closest('.row').after(rT);rT.after(rB);
+  const apply=()=>{const T=+document.getElementById('tt').value,b=+document.getElementById('tb').value;st.t0=+(T*(1-b)).toFixed(4);st.t1=+(T*(1+b)).toFixed(4);rebuild(false);};
+  document.getElementById('tt').oninput=apply;document.getElementById('tb').oninput=apply;}
 {const row=document.createElement('div');row.className='row';
   row.innerHTML=`<span>gap</span><div class="opts"><label class="baseN" for="gap">from the axis <input id="gap" type="range" min="0" max="200" step="0.5" value="0"> <output id="gapout">touching</output></label></div>`;
   mixer.querySelector('#o-copies-0').closest('.row').after(row);
