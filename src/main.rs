@@ -145,8 +145,6 @@ fn main() {
         check(&format!("taper {t}: size at base"), rho(t, 0.0), 16.33, 1e-12);
         check(&format!("taper {t}: size at tip"), rho(t, 1.0), tip, 1e-9);
     }
-    check("12a layers of 3 mm at 1/4 scale", (ZT * 0.25 / 3.0).floor(), 97.0, 0.0);
-    check("12b layers of 3 mm at full scale", (ZT / 3.0).floor(), 388.0, 0.0);
 
     let f = unsafe { FAILS };
     if f > 0 { eprintln!("{f} check(s) failed"); std::process::exit(1); }

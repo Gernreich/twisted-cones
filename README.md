@@ -5,11 +5,10 @@
 **[Open the variations](https://gernreich.github.io/twisted-cones/)**
 
 A cone, offset so one side runs up the z axis, and twisted around that axis. Every
-slice is level with the x/y plane and touches the z axis. The page shows 26
+slice is level with the x/y plane and touches the z axis. The page shows 23
 variations on a contact sheet (slice shape, how fast it twists at the base and at
-the tip, the curve it tapers along, copies, a gap at the axis, a hollow wall, and a
-stack of 3 mm layers), and a mixer that combines any of them, all lit and turnable
-in 3D. The taper curves are linear (a cone), geometric (a horn), power 2.5 (a bell),
+the tip, the curve it tapers along, copies, and a gap at the axis), and a mixer that
+combines any of them, all lit and turnable in 3D. The taper curves are linear (a cone), geometric (a horn), power 2.5 (a bell),
 parabolic (a swell), hyperbolic, elliptic and cosine.
 
 It grew in four steps, each kept as its own page:
@@ -32,7 +31,6 @@ It grew in four steps, each kept as its own page:
 The base cone runs from z = 0, where its slice is 32.66 mm across, to a point on
 the z axis at z = 1166.43, turning once on the way. (The four sweeps turn τ per
 1000 mm of rise, which is 1.166 turns over the same height.)
-At full size it makes 388 layers of 3 mm ply; at ¼ scale, 97.
 
 ## Files
 
