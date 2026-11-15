@@ -109,9 +109,6 @@ body{font-size:14px;line-height:1.4}
           <button id="v-top">Top</button>
           <button id="v-under">Under</button>
         </div>
-        <div class="grp"><span>show</span>
-          <button id="t-cut" aria-pressed="false">Cut away front</button>
-        </div>
       </div>
     </div>
     <aside class="side">
@@ -231,7 +228,7 @@ const SHEET=[
  ['9b','Three copies','Three cones a third of a turn apart: a three-strand braid.',SB({copies:3})],
  ['10a','Gap at the axis','Every slice held 4 mm off the z axis instead of touching it.',SB({gap:4})],
  ['10b','Three copies with a gap','Three cones each 4 mm off the axis, leaving a twisting 8 mm channel up the middle.',SB({copies:3,gap:4})],
- ['11','Hollow, 1.2 mm wall','The cone as a 1.2 mm shell for printing: open underneath, sealed near the tip where the slice gets too thin for the wall. Shown cut away.',SB({wall:1.2})],
+ ['11','Hollow, 1.2 mm wall','The cone as a 1.2 mm shell for printing: open underneath, sealed near the tip where the slice gets too thin for the wall.',SB({wall:1.2})],
 ];
 // Mixer starting points = the contact sheet's variations (so they always match it) + combinations
 const PRESETS=SHEET.map(([n,name,,s])=>[n,name,s]).concat([
@@ -330,12 +327,10 @@ let R,TR;
 try{R=new THREE.WebGLRenderer({canvas:document.getElementById('gl'),antialias:true});
   TR=new THREE.WebGLRenderer({antialias:true,preserveDrawingBuffer:true});}
 catch(e){document.querySelector('.stage').innerHTML='<p class="err">This browser has WebGL turned off, so the solids cannot be drawn.</p>';return;}
-R.setPixelRatio(devicePixelRatio||1);R.localClippingEnabled=true;TR.localClippingEnabled=true;
+R.setPixelRatio(devicePixelRatio||1);
 const TW=160,TH=240;TR.setPixelRatio(Math.min(2,devicePixelRatio||1));TR.setSize(TW,TH,false);
 
 const mat=new THREE.MeshStandardMaterial({color:0xb8794e,roughness:0.45,metalness:0.15,side:THREE.DoubleSide});
-const clip=new THREE.Plane(new THREE.Vector3(0,1,0),0); // keeps y >= 0: removes the half nearest the iso camera
-const setClip=on=>{mat.clippingPlanes=on?[clip]:[];mat.needsUpdate=true;};
 function tri(pos,a,b,c){pos.push(...a,...b,...c);}
 function quad(pos,a,b,c,d){tri(pos,a,b,c);tri(pos,a,c,d);}
 function geomFor(s){
@@ -392,7 +387,7 @@ function aimCam(cam,b,Cz,W,H,S,px,py){
 // ---------- large view ----------
 const gl=document.getElementById('gl'),ov=document.getElementById('ov'),octx=ov.getContext('2d');
 const scene=makeScene(),cam=new THREE.OrthographicCamera(-1,1,1,-1,1,20000),holder=new THREE.Group();scene.add(holder);
-let axes=null,cur=null,curGeo=null,K=4,cut=false;
+let axes=null,cur=null,curGeo=null,K=4;
 let yaw=-0.75,pitch=0.3,zoom=1,panX=0,panY=0,anim=null,W=1,H=1,S=1,Cz=583;
 const views={iso:[-0.75,0.3],front:[0,0],side:[-PI/2,0],top:[0,PI/2],under:[-0.75,-0.6]};
 function buildAxes(){if(axes)scene.remove(axes);
@@ -407,8 +402,6 @@ function rebuild(fromPreset){
   curGeo=geomFor(st);cur=groupFor(st,curGeo);holder.add(cur);
   const sc=scaleOf(st);
   Cz=(ZT-baseT(st))*sc/2;if(fromPreset||sc!==lastScale){zoom=1;panX=panY=0;}lastScale=sc;
-  if(fromPreset){cut=!!st.wall;document.getElementById('t-cut').setAttribute('aria-pressed',cut);}
-  setClip(cut);
   GROUPS.forEach(g=>g.opts.forEach(([v],i)=>document.getElementById(`o-${g.key}-${i}`).setAttribute('aria-pressed',st[g.key]===v)));
   document.getElementById('pname').textContent=nameOf(st);
   {const we=document.getElementById('wall');we.value=st.wall;document.getElementById('wallout').textContent=st.wall?st.wall.toFixed(1)+' mm':'solid';}
@@ -444,7 +437,6 @@ function go(k){press('v-','v-'+k);const [ty,tp]=views[k],y0=yaw,p0=pitch,dy=Math
   anim=requestAnimationFrame(step);}
 Object.keys(views).forEach(k=>document.getElementById('v-'+k).onclick=()=>go(k));
 [1,2,4,6,8,10].forEach(k=>document.getElementById('k-'+k).onclick=()=>{K=k;press('k-','k-'+k);draw();renderAllThumbs();});
-document.getElementById('t-cut').onclick=()=>{cut=!cut;document.getElementById('t-cut').setAttribute('aria-pressed',cut);setClip(cut);draw();};
 let drag=null,mode='turn',pinch=null;const ptrs=new Map();
 gl.addEventListener('contextmenu',e=>e.preventDefault());
 gl.addEventListener('pointerdown',e=>{gl.setPointerCapture(e.pointerId);ptrs.set(e.pointerId,[e.clientX,e.clientY]);drag=[e.clientX,e.clientY];
@@ -479,8 +471,7 @@ GROUPS.forEach(g=>{const row=document.createElement('div');row.className='row';
   row.querySelector('.opts').appendChild(fin);['fT','fW','fS'].forEach(k=>{const c=document.getElementById(k);c.onchange=()=>{st[k]=c.checked;rebuild(false);};});}
 {const row=document.createElement('div');row.className='row';
   row.innerHTML=`<span>hollow</span><div class="opts"><label class="baseN" for="wall">wall <input id="wall" type="range" min="0" max="5" step="0.2" value="0"> <output id="wallout">solid</output></label></div>`;
-  mixer.appendChild(row);const we=document.getElementById('wall');we.oninput=()=>{const was=st.wall;st.wall=+we.value;
-    if(!was&&st.wall&&!cut){cut=true;document.getElementById('t-cut').setAttribute('aria-pressed',true);}rebuild(false);};}
+  mixer.appendChild(row);const we=document.getElementById('wall');we.oninput=()=>{st.wall=+we.value;rebuild(false);};}
 {const row=document.createElement('div');row.className='row';
   row.innerHTML=`<span>base</span><div class="opts" role="group" aria-label="Base"><button id="base-off">None</button><button id="base-on">Circular</button>`+
     `<label class="baseN" for="baseN">layers <input id="baseN" type="range" min="1" max="100" step="1" value="10"> <output id="baseNout">10 × 3 mm</output></label></div>`;
@@ -525,14 +516,14 @@ document.getElementById('stl').onclick=async()=>{const [buf,n]=stlFor(st),base='
 const tscene=makeScene(),tcam=new THREE.OrthographicCamera(-1,1,1,-1,1,20000),tholder=new THREE.Group();tscene.add(tholder);
 const queue=[];let busy=false;
 function thumbInto(card,s){queue.push([card,s]);if(!busy)pump();}
-function pump(){busy=true;const job=queue.shift();if(!job){busy=false;setClip(cut);return;}
+function pump(){busy=true;const job=queue.shift();if(!job){busy=false;return;}
   const [card,s]=job,g=geomFor(s),grp=groupFor(s,g),sc=scaleOf(s);
   TR.setClearColor(new THREE.Color(css('--sheet')));
-  tholder.add(grp);tholder.scale.set(K*sc,K*sc,sc);setClip(!!s.wall);
+  tholder.add(grp);tholder.scale.set(K*sc,K*sc,sc);
   aimCam(tcam,basis(-0.75,0.3),(ZT-baseT(s))*sc/2,TW,TH,TH/((ZT+baseT(s))*sc*1.12),0,0);TR.render(tscene,tcam);
   const url=TR.domElement.toDataURL('image/png');tholder.remove(grp);freeGroup(grp);g.dispose();
   const img=document.createElement('img');img.alt=nameOf(s);img.src=url;card.replaceChild(img,card.firstElementChild);
-  setClip(cut);setTimeout(pump,0);}
+  setTimeout(pump,0);}
 function makeCard(num,title,s){const b=document.createElement('button');b.className='card';b.type='button';b.dataset.key=JSON.stringify(s);
   b.setAttribute('aria-pressed','false');
   b.innerHTML=`<div class="ph"></div><div class="lab"><span class="num"></span><span class="ttl"></span></div>`;
