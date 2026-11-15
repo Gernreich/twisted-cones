@@ -10,8 +10,8 @@ variations on a contact sheet (slice shape, how fast it twists at the base and a
 the tip, the curve it tapers along, copies, and a gap at the axis), and a mixer that
 combines any of them, adds a circular base 1 to 100 layers of 3 mm thick, and
 downloads the shape as an STL file, all lit and turnable in 3D. The taper curves are
-linear (a cone), geometric (a horn), power 0.5, 0.8 and 2.5 (a bell), parabolic (a
-swell), hyperbolic, a closed hyperbola (the hyperbola shifted to end in a point), the
+linear (a cone), geometric (a horn), a power curve (1 − u)^k with k on a slider from
+0.1 to 5 (2.5 is a bell, 0.5 a dome), parabolic (a swell), hyperbolic, a closed hyperbola (the hyperbola shifted to end in a point), the
 closed hyperbola turned τ/4, logarithmic, the log turned τ/4 (an exponential),
 elliptic and cosine. Turning a curve τ/4 here means turning its profile a quarter
 turn in the height-by-size square, so it bulges out where it used to bulge in.
