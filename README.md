@@ -9,7 +9,7 @@ slice is level with the x/y plane and touches the z axis. The page shows 31
 variations on a contact sheet (slice shape, how fast it twists at the base and at
 the tip, the curve it tapers along, copies, and a gap at the axis), and a mixer that
 combines any of them, makes it hollow with a wall
-from 0.2 to 5 mm thick (to print with less filament), cuts it off at 10% to 100% of its height (each of
+from 0.2 to 10 mm thick (to print with less filament), cuts it off at 10% to 100% of its height (each of
 the taper, the twist and the shape change just stops there, or is ticked to finish at the cut), adds a circular base 1 to 100 layers of 3 mm thick, and
 downloads the shape as an STL file (widened by the
 same x,y stretch the view shows, with gap, wall and base kept in true mm), all lit and turnable in 3D. The taper curves are

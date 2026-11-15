@@ -113,7 +113,7 @@ body{font-size:14px;line-height:1.4}
     </div>
     <aside class="side">
       <div class="row" id="stretchRow"><span>x,y ×</span><div class="opts" role="group" aria-label="Stretch x and y">
-        <button id="k-1" aria-pressed="true">1</button><button id="k-2">2</button><button id="k-4">4</button><button id="k-6">6</button><button id="k-8">8</button><button id="k-10">10</button>
+        <button id="k-1">1</button><button id="k-2">2</button><button id="k-4" aria-pressed="true">4</button><button id="k-6">6</button><button id="k-8">8</button><button id="k-10">10</button><button id="k-15">15</button><button id="k-20">20</button><button id="k-30">30</button><button id="k-50">50</button><button id="k-75">75</button><button id="k-100">100</button>
       </div></div>
       <div id="sheetSide">
         <h3 id="snum"></h3>
@@ -138,7 +138,7 @@ body{font-size:14px;line-height:1.4}
         <table id="stats"></table>
       </div>
       <p class="note" id="warn"></p>
-      <p class="note">All sizes in mm, z up. x and y start at ×1, the original proportions (about 1166 tall and under 35 wide); stretching them widens the shape; the stretch is part of the shape, so the measurements and the STL match the view. Gap, wall and base stay true mm. Drag turns, shift-drag or right-drag pans, wheel zooms.</p>
+      <p class="note">All sizes in mm, z up. x and y are stretched ×4 unless you change it (×1 is the original proportions: about 1166 tall and under 35 wide; up to ×100); the stretch is part of the shape, so the measurements and the STL match the view. Gap, wall and base stay true mm. Drag turns, shift-drag or right-drag pans, wheel zooms.</p>
     </aside>
   </div>
 
@@ -385,6 +385,9 @@ function makeScene(){const sc=new THREE.Scene();
   const f=new THREE.DirectionalLight(0xffffff,0.3);f.position.set(1.2,1,-0.4);sc.add(f);return sc;}
 function basis(yaw,pitch){const cy=Math.cos(yaw),sy=Math.sin(yaw),cp=Math.cos(pitch),sp=Math.sin(pitch);
   return {u:[sy*sp,-cy*sp,cp],d:[-sy*cp,cy*cp,sp],r:[cy,sy,0]};}
+// widest reach from the z axis (copies, base and stretch included), so the view fits wide shapes as well as tall ones
+function farOf(s){let f=s.baseOn?baseRadius(s):0;for(let i=0;i<=40;i++)for(const q of slice(s,Math.min(i/40,0.99999),48))f=Math.max(f,Math.hypot(q[0],q[1]));return f;}
+const fitScale=(s,W,H,m)=>Math.min(H/((ZT+baseT(s))*scaleOf(s)*m),W/(2*farOf(s)*scaleOf(s)*m));
 function aimCam(cam,b,Cz,W,H,S,px,py){
   cam.left=(-W/2-px)/S;cam.right=(W/2-px)/S;cam.top=(H/2+py)/S;cam.bottom=(-H/2+py)/S;cam.updateProjectionMatrix();
   cam.up.set(...b.u);cam.position.set(-b.d[0]*8000,-b.d[1]*8000,Cz-b.d[2]*8000);cam.lookAt(0,0,Cz);}
@@ -392,7 +395,7 @@ function aimCam(cam,b,Cz,W,H,S,px,py){
 // ---------- large view ----------
 const gl=document.getElementById('gl'),ov=document.getElementById('ov'),octx=ov.getContext('2d');
 const scene=makeScene(),cam=new THREE.OrthographicCamera(-1,1,1,-1,1,20000),holder=new THREE.Group();scene.add(holder);
-let axes=null,cur=null,curGeo=null;var K=1; // var: slice() reads it, and may run before this line
+let axes=null,cur=null,curGeo=null,curFar=40;var K=4; // var: slice() reads it, and may run before this line
 let yaw=-0.75,pitch=0.3,zoom=1,panX=0,panY=0,anim=null,W=1,H=1,S=1,Cz=583;
 const views={iso:[-0.75,0.3],front:[0,0],side:[-PI/2,0],top:[0,PI/2],under:[-0.75,-0.6]};
 function buildAxes(){if(axes)scene.remove(axes);
@@ -404,7 +407,7 @@ function buildAxes(){if(axes)scene.remove(axes);
 let lastScale=null;
 function rebuild(fromPreset){
   if(cur){holder.remove(cur);freeGroup(cur);}if(curGeo)curGeo.dispose();
-  curGeo=geomFor(st);cur=groupFor(st,curGeo);holder.add(cur);
+  curGeo=geomFor(st);cur=groupFor(st,curGeo);holder.add(cur);curFar=farOf(st);
   const sc=scaleOf(st);
   Cz=(ZT-baseT(st))*sc/2;if(fromPreset||sc!==lastScale){zoom=1;panX=panY=0;}lastScale=sc;
   GROUPS.forEach(g=>g.opts.forEach(([v],i)=>document.getElementById(`o-${g.key}-${i}`).setAttribute('aria-pressed',st[g.key]===v)));
@@ -425,7 +428,7 @@ function proj(q){const b=basis(yaw,pitch),x=q[0]*K,y=q[1]*K,z=q[2]-Cz;
   return [W/2+panX+(x*b.r[0]+y*b.r[1])*S,H/2+panY-(x*b.u[0]+y*b.u[1]+z*b.u[2])*S];}
 function draw(){
   const sc=scaleOf(st);
-  S=Math.min(W*3,H)/((ZT+baseT(st))*sc*1.15)*zoom;
+  S=Math.min(H/((ZT+baseT(st))*sc*1.15),W/(2*Math.max(curFar,1)*sc*1.15))*zoom;
   holder.scale.set(sc,sc,sc);axes.scale.set(K,K,1);
   aimCam(cam,basis(yaw,pitch),Cz,W,H,S,panX,panY);R.render(scene,cam);
   octx.clearRect(0,0,W,H);const muted=css('--muted');
@@ -441,7 +444,7 @@ function go(k){press('v-','v-'+k);const [ty,tp]=views[k],y0=yaw,p0=pitch,dy=Math
   const step=n=>{const a=Math.min(1,(n-t0)/450),e=a<.5?2*a*a:1-Math.pow(-2*a+2,2)/2;yaw=y0+dy*e;pitch=p0+(tp-p0)*e;draw();if(a<1)anim=requestAnimationFrame(step);};
   anim=requestAnimationFrame(step);}
 Object.keys(views).forEach(k=>document.getElementById('v-'+k).onclick=()=>go(k));
-[1,2,4,6,8,10].forEach(k=>document.getElementById('k-'+k).onclick=()=>{K=k;press('k-','k-'+k);rebuild(false);renderAllThumbs();});
+[1,2,4,6,8,10,15,20,30,50,75,100].forEach(k=>document.getElementById('k-'+k).onclick=()=>{K=k;press('k-','k-'+k);rebuild(false);renderAllThumbs();});
 let drag=null,mode='turn',pinch=null;const ptrs=new Map();
 gl.addEventListener('contextmenu',e=>e.preventDefault());
 gl.addEventListener('pointerdown',e=>{gl.setPointerCapture(e.pointerId);ptrs.set(e.pointerId,[e.clientX,e.clientY]);drag=[e.clientX,e.clientY];
@@ -475,7 +478,7 @@ GROUPS.forEach(g=>{const row=document.createElement('div');row.className='row';
   const fin=document.createElement('div');fin.className='finish';fin.innerHTML='<span>finish at the cut:</span>'+[['fT','taper'],['fW','twist'],['fS','shape']].map(([k,n])=>`<label><input type="checkbox" id="${k}"> ${n}</label>`).join('');
   row.querySelector('.opts').appendChild(fin);['fT','fW','fS'].forEach(k=>{const c=document.getElementById(k);c.onchange=()=>{st[k]=c.checked;rebuild(false);};});}
 {const row=document.createElement('div');row.className='row';
-  row.innerHTML=`<span>hollow</span><div class="opts"><label class="baseN" for="wall">wall <input id="wall" type="range" min="0" max="5" step="0.2" value="0"> <output id="wallout">solid</output></label></div>`;
+  row.innerHTML=`<span>hollow</span><div class="opts"><label class="baseN" for="wall">wall <input id="wall" type="range" min="0" max="10" step="0.2" value="0"> <output id="wallout">solid</output></label></div>`;
   mixer.appendChild(row);const we=document.getElementById('wall');we.oninput=()=>{st.wall=+we.value;rebuild(false);};}
 {const row=document.createElement('div');row.className='row';
   row.innerHTML=`<span>base</span><div class="opts" role="group" aria-label="Base"><button id="base-off">None</button><button id="base-on">Circular</button>`+
@@ -525,7 +528,7 @@ function pump(){busy=true;const job=queue.shift();if(!job){busy=false;return;}
   const [card,s]=job,g=geomFor(s),grp=groupFor(s,g),sc=scaleOf(s);
   TR.setClearColor(new THREE.Color(css('--sheet')));
   tholder.add(grp);tholder.scale.set(sc,sc,sc);
-  aimCam(tcam,basis(-0.75,0.3),(ZT-baseT(s))*sc/2,TW,TH,TH/((ZT+baseT(s))*sc*1.12),0,0);TR.render(tscene,tcam);
+  aimCam(tcam,basis(-0.75,0.3),(ZT-baseT(s))*sc/2,TW,TH,fitScale(s,TW,TH,1.12),0,0);TR.render(tscene,tcam);
   const url=TR.domElement.toDataURL('image/png');tholder.remove(grp);freeGroup(grp);g.dispose();
   const img=document.createElement('img');img.alt=nameOf(s);img.src=url;card.replaceChild(img,card.firstElementChild);
   setTimeout(pump,0);}
