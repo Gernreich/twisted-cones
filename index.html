@@ -495,7 +495,7 @@ GROUPS.forEach(g=>{const row=document.createElement('div');row.className='row';
   const pe=document.getElementById('pw');pe.oninput=()=>{st.pw=+pe.value;st.taper='pow';rebuild(false);};}
 {const row=document.createElement('div');row.className='row';
   row.innerHTML=`<span>cutoff</span><div class="opts"><label class="baseN" for="top">stop at <input id="top" type="range" min="10" max="100" step="1" value="100"> <output id="topout">100%</output></label></div>`;
-  mixer.appendChild(row);const te=document.getElementById('top');te.oninput=()=>{st.top=+te.value;rebuild(false);};
+  mixer.querySelector('#o-tip-0').closest('.row').after(row);const te=document.getElementById('top');te.oninput=()=>{st.top=+te.value;rebuild(false);};
   const fin=document.createElement('div');fin.className='finish';fin.innerHTML='<span>finish at the cut:</span>'+[['fT','taper'],['fW','twist'],['fS','shape']].map(([k,n])=>`<label><input type="checkbox" id="${k}"> ${n}</label>`).join('');
   row.querySelector('.opts').appendChild(fin);['fT','fW','fS'].forEach(k=>{const c=document.getElementById(k);c.onchange=()=>{st[k]=c.checked;rebuild(false);};});}
 {const row=document.createElement('div');row.className='row';
