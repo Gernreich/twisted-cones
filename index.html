@@ -226,6 +226,7 @@ const SHEET=[
  ['9b','Three copies','Three cones a third of a turn apart: a three-strand braid.',SB({copies:3})],
  ['10a','Gap at the axis','Every slice held 4 mm off the z axis instead of touching it.',SB({gap:4})],
  ['10b','Three copies with a gap','Three cones each 4 mm off the axis, leaving a twisting 8 mm channel up the middle.',SB({copies:3,gap:4})],
+ ['11','Hollow, 1.2 mm wall','The cone as a 1.2 mm shell for printing: open underneath, sealed near the tip where the slice gets too thin for the wall. Shown cut away.',SB({wall:1.2})],
 ];
 // Mixer starting points = the contact sheet's variations (so they always match it) + combinations
 const PRESETS=SHEET.map(([n,name,,s])=>[n,name,s]).concat([
@@ -266,6 +267,33 @@ function slice(s,u,n){const r=rho(s.taper,u,s.pw),loc=[];let mx=Infinity;
   const th=theta(s,u),c=Math.cos(th),si=Math.sin(th);
   return loc.map(([x,y])=>{const a=x-mx+s.gap;return [a*c-y*si,a*si+y*c];});}
 const cen=pts=>{let x=0,y=0;pts.forEach(q=>{x+=q[0];y+=q[1];});return [x/pts.length,y/pts.length];};
+const area=p=>{let a=0;for(let i=0;i<p.length;i++){const q=p[i],w=p[(i+1)%p.length];a+=q[0]*w[1]-w[0]*q[1];}return a/2;};
+// the slice moved in by w all round (a mitred offset), or null when the wall would fill it or fold over itself
+function inset(p,w){const n=p.length,A=area(p),sg=A>0?1:-1,out=[];
+  for(let i=0;i<n;i++){const a=p[(i+n-1)%n],b=p[i],c=p[(i+1)%n];
+    let e1=[b[0]-a[0],b[1]-a[1]],e2=[c[0]-b[0],c[1]-b[1]];const l1=Math.hypot(...e1)||1,l2=Math.hypot(...e2)||1;
+    const n1=[-sg*e1[1]/l1,sg*e1[0]/l1],n2=[-sg*e2[1]/l2,sg*e2[0]/l2];let m=[n1[0]+n2[0],n1[1]+n2[1]];const lm=Math.hypot(...m)||1;m=[m[0]/lm,m[1]/lm];
+    const d=w/Math.max(0.25,m[0]*n1[0]+m[1]*n1[1]);out.push([b[0]+m[0]*d,b[1]+m[1]*d]);}
+  const B=area(out);if(Math.sign(B)!==sg||Math.abs(B)<w*w)return null;
+  const X=(p1,p2,p3,p4)=>{const d=(p2[0]-p1[0])*(p4[1]-p3[1])-(p2[1]-p1[1])*(p4[0]-p3[0]);if(!d)return false;
+    const t=((p3[0]-p1[0])*(p4[1]-p3[1])-(p3[1]-p1[1])*(p4[0]-p3[0]))/d,v=((p3[0]-p1[0])*(p2[1]-p1[1])-(p3[1]-p1[1])*(p2[0]-p1[0]))/d;return t>0&&t<1&&v>0&&v<1;};
+  for(let i=0;i<n;i++)for(let j=i+2;j<n;j++){if(i===0&&j===n-1)continue;if(X(out[i],out[(i+1)%n],out[j],out[(j+1)%n]))return insetRadial(p,w);}
+  return out;}
+// corners fold a mitred offset over itself; then walk in from the centre along each vertex's ray to the last point a full wall from the outline
+function insetRadial(p,w){const n=p.length,c=cen(p);
+  const dist=(x,y)=>{let m=Infinity;for(let i=0;i<n;i++){const a=p[i],b=p[(i+1)%n],ex=b[0]-a[0],ey=b[1]-a[1],L=ex*ex+ey*ey||1;
+    let t=((x-a[0])*ex+(y-a[1])*ey)/L;t=t<0?0:t>1?1:t;const dx=x-a[0]-t*ex,dy=y-a[1]-t*ey,d=dx*dx+dy*dy;if(d<m)m=d;}return Math.sqrt(m);};
+  if(dist(c[0],c[1])<w*1.05)return null;
+  const out=p.map(q=>{let lo=0,hi=1;for(let k=0;k<18;k++){const t=(lo+hi)/2;dist(c[0]+(q[0]-c[0])*t,c[1]+(q[1]-c[1])*t)>=w?lo=t:hi=t;}return [c[0]+(q[0]-c[0])*lo,c[1]+(q[1]-c[1])*lo];});
+  return Math.abs(area(out))<w*w?null:out;}
+// hollow: the cavity follows the slices up while the inset is sound, and stops at least one wall below the top
+function cavity(s,rings){if(!s.wall)return [];const zTop=rings[rings.length-1][0],inner=[];
+  for(const [z,p] of rings){if(z>zTop-s.wall)break;const q=inset(p,s.wall);if(!q)break;inner.push([z,q]);}
+  return inner.length>1?inner:[];}
+function volumes(s){const NZ=240,NT=96,rings=[];for(let i=0;i<=NZ;i++){const u=i/NZ*HT(s)/ZT;rings.push([u*ZT,slice(s,Math.min(u,0.99999),NT)]);}
+  const V=rs=>{let v=0;for(let i=0;i<rs.length-1;i++)v+=(Math.abs(area(rs[i][1]))+Math.abs(area(rs[i+1][1])))/2*(rs[i+1][0]-rs[i][0]);return v;};
+  const solid=V(rings),hole=V(cavity(s,rings)),k=s.copies,b=s.baseOn?PI*baseRadius(s)**2*baseT(s):0;
+  return {solid:solid*k+b,shown:(solid-hole)*k+b};}
 const innerOf=(s,u,pts)=>{const c=cen(pts),r=rho(s.taper,u,s.pw),k=Math.max(0,1-s.wall/Math.max(r,1e-9));return pts.map(q=>[c[0]+(q[0]-c[0])*k,c[1]+(q[1]-c[1])*k]);};
 
 const lbl=(g,v,s)=>{if(g==='taper'&&v==='pow'&&s)return `Power ${s.pw}${s.pw===2.5?' (bell)':s.pw===1?' (cone)':s.pw===0.5?' (dome)':''}`;const o=GROUPS.find(x=>x.key===g).opts.find(o=>o[0]===v);return o?o[1]:v;};
@@ -275,7 +303,7 @@ function nameOf(s){const parts=[];
   if(s.taper!=='cone')parts.push(lbl('taper',s.taper,s).toLowerCase());
   if(s.copies>1)parts.push(`${s.copies} copies`);
   if(s.gap)parts.push(s.gap+' mm gap');
-  if(s.wall)parts.push('hollow');
+  if(s.wall)parts.push(`hollow, ${s.wall} mm wall`);
   if(s.build!=='smooth')parts.push(lbl('build',s.build));
   if((s.top??100)<100)parts.push(`cut off at ${s.top}%`);
   if(s.baseOn)parts.push(`circular base, ${s.baseN} layer${s.baseN===1?'':'s'}`);
@@ -285,7 +313,7 @@ function stats(s){let near=Infinity,far=0;
   let peak=-Infinity;for(let i=0;i<=400;i++)peak=Math.max(peak,theta(s,i/400));
   const sc=scaleOf(s),rows=[['height',(HT(s)*sc).toFixed(2)],['closest to z axis',(near*sc).toFixed(3)],['farthest from z axis',(far*sc).toFixed(3)],
     ['turns, base to tip',((theta(s,1)-theta(s,0))/TAU).toFixed(4)]];
-  if(s.wall)rows.push(['wall',(s.wall*sc).toFixed(2)]);
+  {const v=volumes(s);rows.push(['volume, cm³',(v.shown/1000).toFixed(1)]);if(s.wall){rows.push(['wall',s.wall.toFixed(1)]);rows.push(['volume if solid, cm³',(v.solid/1000).toFixed(1)]);rows.push(['material saved',Math.round(100*(1-v.shown/v.solid))+'%']);}}
   if(s.build!=='smooth')rows.push(['layers of 3 mm',Math.floor(ZT*sc/3)]);
   if(s.baseOn){rows.push(['base radius',baseRadius(s).toFixed(1)]);rows.push(['base thickness',`${s.baseN} × ${LAYER} = ${baseT(s)}`]);rows.push(['height with base',(HT(s)+baseT(s)).toFixed(2)]);}
   return [rows,far];}
@@ -297,8 +325,7 @@ function warnings(s,far){const w=[];
     for(let i=0;i<40&&!hit;i++){const A=slice(s,i/40,96),ca=Math.cos(TAU/s.copies),sa=Math.sin(TAU/s.copies);
       for(const q of A){if(Math.hypot(q[0],q[1])<0.5)continue;if(inside([q[0]*ca-q[1]*sa,q[0]*sa+q[1]*ca],A)){hit=true;break;}}}
     if(hit)w.push('The copies overlap each other here, so as a cut stack they would fuse into one piece per layer.');}
-  if(s.wall&&s.taper==='exp')w.push('Horn + hollow: the tip stays open, about '+(R0*0.01*2).toFixed(2)+' mm across before the wall.');
-  if(s.wall&&s.build!=='smooth')w.push('Hollow layers: each layer is a ring; near the tip the wall closes and layers turn solid.');
+  if(s.wall)w.push('Hollow: open underneath (a base closes it), sealed at the top where the slice gets too thin for the wall; the tip is solid from there up.');
   return w.join(' ');}
 
 if(!window.THREE){document.querySelector('.stage').innerHTML='<p class="err">The 3D library did not load, so nothing can be drawn. Reload the page to try again.</p>';return;}
@@ -337,11 +364,12 @@ function geomFor(s){
   const surf=(rs,flip)=>{const o=verts.length/3;rs.forEach(([z,p])=>p.forEach(q=>verts.push(q[0],q[1],z)));
     for(let i=0;i<rs.length-1;i++)for(let j=0;j<NT;j++){const a=o+i*NT+j,b=o+i*NT+(j+1)%NT,c=a+NT,d=b+NT;flip?idx.push(a,d,b,a,c,d):idx.push(a,b,d,a,d,c);}};
   surf(rings,false);
-  if(s.wall){
-    surf(rings.map(([z,p],i)=>[z,innerOf(s,Math.min(i/NZ,0.99999),p)]),true);
-    const o2=(NZ+1)*NT;
-    for(let j=0;j<NT;j++){const a=j,b=(j+1)%NT,c=o2+j,d=o2+(j+1)%NT;idx.push(a,c,d,a,d,b);}
-    if(s.taper==='exp'){const t=NZ*NT,ti=o2+NZ*NT;for(let j=0;j<NT;j++){const a=t+j,b=t+(j+1)%NT,c=ti+j,d=ti+(j+1)%NT;idx.push(a,d,c,a,b,d);}}
+  const inner=cavity(s,rings);
+  if(inner.length){
+    surf(inner,true);const o2=(NZ+1)*NT,m=inner.length-1;
+    for(let j=0;j<NT;j++){const a=j,b=(j+1)%NT,c=o2+j,d=o2+(j+1)%NT;idx.push(a,c,d,a,d,b);}   // ring between outer and inner at the base
+    {const [z,p]=inner[m],c=cen(p),ci=verts.length/3;verts.push(c[0],c[1],z);for(let j=0;j<NT;j++)idx.push(ci,o2+m*NT+(j+1)%NT,o2+m*NT+j);} // ceiling
+    {const [z,p]=rings[NZ],c=cen(p),ci=verts.length/3;verts.push(c[0],c[1],z);for(let j=0;j<NT;j++)idx.push(ci,NZ*NT+j,NZ*NT+(j+1)%NT);}   // top
   }else{
     [0,NZ].forEach(i=>{const [z,p]=rings[i],c=cen(p),ci=verts.length/3;verts.push(c[0],c[1],z);
       for(let j=0;j<NT;j++)i?idx.push(ci,i*NT+j,i*NT+(j+1)%NT):idx.push(ci,i*NT+(j+1)%NT,i*NT+j);});
@@ -386,6 +414,7 @@ function rebuild(fromPreset){
   setClip(cut);
   GROUPS.forEach(g=>g.opts.forEach(([v],i)=>document.getElementById(`o-${g.key}-${i}`).setAttribute('aria-pressed',st[g.key]===v)));
   document.getElementById('pname').textContent=nameOf(st);
+  {const we=document.getElementById('wall');we.value=st.wall;document.getElementById('wallout').textContent=st.wall?st.wall.toFixed(1)+' mm':'solid';}
   {const te=document.getElementById('top');te.value=st.top;document.getElementById('topout').textContent=st.top+'%';}
   {const pe=document.getElementById('pw');pe.value=st.pw;document.getElementById('pwout').textContent=st.pw+(st.taper==='pow'?'':' (pick Power to use)');}
   {const on=!!st.baseOn;document.getElementById('base-on').setAttribute('aria-pressed',on);document.getElementById('base-off').setAttribute('aria-pressed',!on);
@@ -449,6 +478,10 @@ GROUPS.forEach(g=>{const row=document.createElement('div');row.className='row';
 {const row=document.createElement('div');row.className='row';
   row.innerHTML=`<span>cutoff</span><div class="opts"><label class="baseN" for="top">stop at <input id="top" type="range" min="10" max="100" step="1" value="100"> <output id="topout">100%</output></label></div>`;
   mixer.appendChild(row);const te=document.getElementById('top');te.oninput=()=>{st.top=+te.value;rebuild(false);};}
+{const row=document.createElement('div');row.className='row';
+  row.innerHTML=`<span>hollow</span><div class="opts"><label class="baseN" for="wall">wall <input id="wall" type="range" min="0" max="5" step="0.2" value="0"> <output id="wallout">solid</output></label></div>`;
+  mixer.appendChild(row);const we=document.getElementById('wall');we.oninput=()=>{const was=st.wall;st.wall=+we.value;
+    if(!was&&st.wall&&!cut){cut=true;document.getElementById('t-cut').setAttribute('aria-pressed',true);}rebuild(false);};}
 {const row=document.createElement('div');row.className='row';
   row.innerHTML=`<span>base</span><div class="opts" role="group" aria-label="Base"><button id="base-off">None</button><button id="base-on">Circular</button>`+
     `<label class="baseN" for="baseN">layers <input id="baseN" type="range" min="1" max="100" step="1" value="10"> <output id="baseNout">10 × 3 mm</output></label></div>`;
@@ -531,7 +564,7 @@ document.getElementById('tab-sheet').onclick=()=>{location.hash='#sheet';};
 document.getElementById('tab-mixer').onclick=()=>{location.hash='#mixer';};
 PRESETS.forEach(([num,name,s],i)=>{const c=makeCard(num,name,resolve(s));c.onclick=()=>{st=resolve(PRESETS[i][2]);rebuild(true);document.querySelector('.view').scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'nearest'});};gal.appendChild(c);});
 let saved=[];
-try{saved=JSON.parse(localStorage.getItem('tcv-saved')||'[]');if(!Array.isArray(saved))saved=[];saved=saved.map(x=>{if(x.t0===undefined){const T=x.turns??1;const m={accel:[0,2*T],decel:[2*T,0]}[x.twist]||[T,T];x=Object.assign({},x,{t0:+m[0].toFixed(3),t1:+m[1].toFixed(3)});delete x.twist;delete x.turns;}const P={bell:2.5,p05:0.5,p08:0.8};if(x.top===undefined)x=Object.assign({},x,{top:100});if(x.taper in P)x=Object.assign({},x,{taper:'pow',pw:P[x.taper]});return Object.assign({},BASE,x,{wall:0,build:'smooth'});});}catch(e){saved=[];}
+try{saved=JSON.parse(localStorage.getItem('tcv-saved')||'[]');if(!Array.isArray(saved))saved=[];saved=saved.map(x=>{if(x.t0===undefined){const T=x.turns??1;const m={accel:[0,2*T],decel:[2*T,0]}[x.twist]||[T,T];x=Object.assign({},x,{t0:+m[0].toFixed(3),t1:+m[1].toFixed(3)});delete x.twist;delete x.turns;}const P={bell:2.5,p05:0.5,p08:0.8};if(x.top===undefined)x=Object.assign({},x,{top:100});if(x.taper in P)x=Object.assign({},x,{taper:'pow',pw:P[x.taper]});return Object.assign({},BASE,x,{build:'smooth'});});}catch(e){saved=[];}
 const persist=()=>{try{localStorage.setItem('tcv-saved',JSON.stringify(saved));return true;}catch(e){return false;}};
 function drawSaved(){savedBox.innerHTML='';saved.forEach((s,i)=>savedBox.appendChild(makeCard('Saved '+(i+1),nameOf(s),s)));
   document.getElementById('noSaved').hidden=saved.length>0;document.getElementById('clear').hidden=!saved.length;}
