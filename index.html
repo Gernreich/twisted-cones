@@ -181,7 +181,7 @@ const GROUPS=[
  {key:'shape',label:'at base',opts:SHAPES},
  {key:'tip',label:'at tip',opts:[['same','Same'],...SHAPES]},
 // twist rate at the base and at the tip, in turns per full height; the rate changes steadily in between
- {key:'taper',label:'taper',opts:[['cone','Linear (cone)'],['exp','Geometric (horn)'],['pow','Power'],['swell','Parabolic (swell)'],['hyper','Hyperbolic'],['hyperC','Closed hyperbola'],['hyperT','Hyperbola turned τ/4'],['log','Logarithmic'],['logT','Log turned τ/4'],['ellip','Elliptic'],['cos','Cosine']]},
+ {key:'taper',label:'taper',opts:[['cone','Linear (cone)'],['exp','Geometric (horn)'],['swell','Parabolic (swell)'],['hyper','Hyperbolic'],['hyperC','Closed hyperbola'],['hyperT','Hyperbola turned τ/4'],['log','Logarithmic'],['logT','Log turned τ/4'],['ellip','Elliptic'],['cos','Cosine']]},
  {key:'copies',label:'copies',opts:[[1,'1'],[2,'2'],[3,'3'],[4,'4'],[5,'5']]},
 ];
 const BASE={shape:'ellT',tip:'same',t0:1,t1:1,taper:'cone',copies:1,gap:0,wall:0,build:'smooth',baseOn:false,baseN:10,pw:2.5,top:100,fT:false,fW:false,fS:false};
@@ -414,7 +414,7 @@ function rebuild(fromPreset){
   ['t0','t1'].forEach(k=>{const e=document.getElementById(k);e.value=st[k];document.getElementById(k+'out').textContent=(+st[k].toFixed(2))+' turns/height';});
   {const ge=document.getElementById('gap');ge.value=st.gap;document.getElementById('gapout').textContent=st.gap?st.gap+' mm':'touching';}
   {const te=document.getElementById('top');te.value=st.top;document.getElementById('topout').textContent=st.top+'%';['fT','fW','fS'].forEach(k=>{const c=document.getElementById(k);c.checked=st[k]!==false;c.disabled=st.top>=100;});}
-  {const pe=document.getElementById('pw');pe.value=st.pw;document.getElementById('pwout').textContent=st.pw+(st.taper==='pow'?'':' (pick Power to use)');}
+  {const pe=document.getElementById('pw');pe.value=st.pw;document.getElementById('pwout').textContent=st.pw+(st.taper==='pow'?' (in use)':' (move to use)');}
   {const on=!!st.baseOn;document.getElementById('base-on').setAttribute('aria-pressed',on);document.getElementById('base-off').setAttribute('aria-pressed',!on);
    const bn=document.getElementById('baseN');bn.value=st.baseN;document.getElementById('baseNout').textContent=`${st.baseN} × 3 mm`;}
   const [rows,far]=stats(st);
