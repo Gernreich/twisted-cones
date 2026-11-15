@@ -103,10 +103,6 @@ body{font-size:14px;line-height:1.4}
     <p class="sub" id="sub-mix" hidden>Mix any combination of slice, twist, taper, copies and gap. Every slice is level; it touches the z axis unless a gap is set. Height runs 0 to 240 mm, sized for a Bambu P1S (256 mm build volume). Start from a thumbnail below or set the buttons yourself, then save combinations you like to the sheet.</p>
     <p class="sub">How it got here: <a href="series/twisted-ellipse-sweep.html" target="_blank" rel="noopener">Twisted ellipse sweep</a> → <a href="series/spiral-ellipse-sweep.html" target="_blank" rel="noopener">Spiral ellipse sweep</a> → <a href="series/spiral-circle-sweep.html" target="_blank" rel="noopener">Spiral circle sweep</a> → <a href="series/elliptic-cone-sweep.html" target="_blank" rel="noopener">Elliptic cone sweep</a></p>
   </header>
-  <nav class="tabs" aria-label="Pages">
-    <button type="button" id="tab-sheet" aria-current="page">Contact sheet</button>
-    <button type="button" id="tab-mixer">Mixer</button>
-  </nav>
 
   <div class="main">
     <div class="view">
@@ -601,23 +597,19 @@ document.getElementById('b-ell').onclick=()=>setBase('ellT');
 document.getElementById('b-circle').onclick=()=>setBase('circle');
 function setMode(m){tabMode=m;const mix=m==='mixer';
   (mix?document.getElementById('mixer'):document.getElementById('sheetPanel')).appendChild(document.getElementById('stretchRow'));
-  document.getElementById('tab-sheet').toggleAttribute('aria-current',!mix);if(!mix)document.getElementById('tab-sheet').setAttribute('aria-current','page');
-  document.getElementById('tab-mixer').toggleAttribute('aria-current',mix);if(mix)document.getElementById('tab-mixer').setAttribute('aria-current','page');
   ['sub-mix','mixSide','secFav','secSaved','secStart'].forEach(id=>document.getElementById(id).hidden=!mix);
   ['sub-sheet','sheetSide','secSheet'].forEach(id=>document.getElementById(id).hidden=mix);
   document.getElementById('mixSide').style.display=mix?'grid':'none';
   if(!mix)showSheet(sheetSel);else rebuild(false);}
-const route=()=>setMode(location.hash==='#sheet'?'sheet':'mixer'); // opens on the mixer, with the user's settings
+const route=()=>setMode('mixer'); // one page now: the mixer (the contact sheet tab was removed; its variations are the starting points)
 addEventListener('hashchange',route);
-document.getElementById('tab-sheet').onclick=()=>{location.hash='#sheet';};
-document.getElementById('tab-mixer').onclick=()=>{location.hash='#mixer';};
 PRESETS.forEach(([num,name,s],i)=>{const c=makeCard(num,name,resolve(s));c.onclick=()=>{st=resolve(PRESETS[i][2]);if(PRESETS[i][3]){K=PRESETS[i][3];document.getElementById('kxy').value=Math.round(100*Math.log10(K/0.1));document.getElementById('kxyout').textContent=K;}rebuild(true);document.querySelector('.view').scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'nearest'});};gal.appendChild(c);});
 let saved=[];
 try{saved=JSON.parse(localStorage.getItem('tcv-saved')||'[]');if(!Array.isArray(saved))saved=[];saved=saved.map(x=>{if(x.t0===undefined){const T=x.turns??1;const m={accel:[0,2*T],decel:[2*T,0]}[x.twist]||[T,T];x=Object.assign({},x,{t0:+m[0].toFixed(3),t1:+m[1].toFixed(3)});delete x.twist;delete x.turns;}const P={bell:2.5,p05:0.5,p08:0.8};if(x.top===undefined)x=Object.assign({},x,{top:100});if(x.taper in P)x=Object.assign({},x,{taper:'pow',pw:P[x.taper]});if(x.copies>5)x=Object.assign({},x,{copies:5});if(x.baseN>5)x=Object.assign({},x,{baseN:5});return Object.assign({},BASE,x,{build:'smooth'});});}catch(e){saved=[];}
 const persist=()=>{try{localStorage.setItem('tcv-saved',JSON.stringify(saved));return true;}catch(e){return false;}};
 function drawSaved(){savedBox.innerHTML='';saved.forEach((s,i)=>savedBox.appendChild(makeCard('Saved '+(i+1),nameOf(s),s)));
   document.getElementById('noSaved').hidden=saved.length>0;document.getElementById('clear').hidden=!saved.length;}
-function renderAllThumbs(){queue.length=0;[...sheetGal.children].forEach((c,i)=>{const s=resolve(SHEET[i][3]);c.dataset.key=JSON.stringify(s);thumbInto(c,s);});[...savedBox.children].forEach((c,i)=>thumbInto(c,saved[i]));[...gal.children].forEach((c,i)=>{const s=resolve(PRESETS[i][2]);c.dataset.key=JSON.stringify(s);thumbInto(c,s);});}
+function renderAllThumbs(){queue.length=0;[...savedBox.children].forEach((c,i)=>thumbInto(c,saved[i]));[...gal.children].forEach((c,i)=>{const s=resolve(PRESETS[i][2]);c.dataset.key=JSON.stringify(s);thumbInto(c,s);});}
 const status=document.getElementById('status');
 document.getElementById('save').onclick=()=>{
   const key=JSON.stringify(st);if(saved.some(s=>JSON.stringify(s)===key)){status.textContent='Already on the sheet';return;}
