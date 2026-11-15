@@ -186,7 +186,7 @@ const GROUPS=[
  {key:'taper',label:'taper',opts:[['cone','Linear (cone)'],['exp','Geometric (horn)'],['swell','Parabolic (swell)'],['hyper','Hyperbolic'],['hyperC','Closed hyperbola'],['hyperT','Hyperbola turned τ/4'],['log','Logarithmic'],['logT','Log turned τ/4'],['ellip','Elliptic'],['cos','Cosine']]},
  {key:'copies',label:'copies',opts:[[1,'1'],[2,'2'],[3,'3'],[4,'4'],[5,'5']]},
 ];
-const BASE={shape:'ellT',tip:'same',t0:1,t1:1,taper:'cone',copies:1,gap:0,wall:0,build:'smooth',baseOn:false,baseN:5,dir:1,pw:2.5,top:100,fT:false,fW:false,fS:false};
+const BASE={shape:'ellT',tip:'same',t0:1,t1:1,taper:'cone',copies:1,gap:0,wall:0,build:'smooth',baseOn:false,baseN:1,dir:1,pw:2.5,top:100,fT:false,fW:false,fS:false};
 // cutoff: the whole shape (taper, twist, shape change) is fitted into top % of the height
 const HT=s=>ZT*(s.top??100)/100;
 // u runs 0 to 1 over the height shown; a part not ticked to finish at the cut uses the full-height u, so it just stops there
@@ -499,11 +499,11 @@ GROUPS.forEach(g=>{const row=document.createElement('div');row.className='row';
   const fin=document.createElement('div');fin.className='finish';fin.innerHTML='<span>finish at the cut:</span>'+[['fT','taper'],['fW','twist'],['fS','shape']].map(([k,n])=>`<label><input type="checkbox" id="${k}"> ${n}</label>`).join('');
   row.querySelector('.opts').appendChild(fin);['fT','fW','fS'].forEach(k=>{const c=document.getElementById(k);c.onchange=()=>{st[k]=c.checked;rebuild(false);};});}
 {const row=document.createElement('div');row.className='row';
-  row.innerHTML=`<span>hollow</span><div class="opts"><label class="baseN" for="wall">wall <input id="wall" type="range" min="0" max="10" step="0.2" value="0"> <output id="wallout">solid</output></label></div>`;
+  row.innerHTML=`<span>hollow</span><div class="opts"><label class="baseN" for="wall">wall <input id="wall" type="range" min="0" max="20" step="0.2" value="0"> <output id="wallout">solid</output></label></div>`;
   mixer.appendChild(row);const we=document.getElementById('wall');we.oninput=()=>{st.wall=+we.value;rebuild(false);};}
 {const row=document.createElement('div');row.className='row';
   row.innerHTML=`<span>base</span><div class="opts" role="group" aria-label="Base"><button id="base-off">None</button><button id="base-on">Circular</button>`+
-    `<label class="baseN" for="baseN">layers <input id="baseN" type="range" min="1" max="5" step="1" value="5"> <output id="baseNout">10 × 3 mm</output></label></div>`;
+    `<label class="baseN" for="baseN">layers <input id="baseN" type="range" min="1" max="5" step="1" value="1"> <output id="baseNout">10 × 3 mm</output></label></div>`;
   mixer.appendChild(row);
   document.getElementById('base-off').onclick=()=>{st.baseOn=false;rebuild(false);};
   document.getElementById('base-on').onclick=()=>{st.baseOn=true;rebuild(false);};
