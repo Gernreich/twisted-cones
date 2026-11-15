@@ -469,7 +469,7 @@ GROUPS.forEach(g=>{const row=document.createElement('div');row.className='row';
     b.onclick=()=>{st[g.key]=v;rebuild(false);};box.appendChild(b);});
   mixer.appendChild(row);});
 {const row=document.createElement('div');row.className='row';
-  row.innerHTML=`<span>gap</span><div class="opts"><label class="baseN" for="gap">from the axis <input id="gap" type="range" min="0" max="100" step="0.5" value="0"> <output id="gapout">touching</output></label></div>`;
+  row.innerHTML=`<span>gap</span><div class="opts"><label class="baseN" for="gap">from the axis <input id="gap" type="range" min="0" max="200" step="0.5" value="0"> <output id="gapout">touching</output></label></div>`;
   mixer.querySelector('#o-copies-0').closest('.row').after(row);
   const ge=document.getElementById('gap');ge.oninput=()=>{st.gap=+ge.value;rebuild(false);};}
 {const row=document.createElement('div');row.className='row';row.id='powRow';
