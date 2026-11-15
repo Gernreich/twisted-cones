@@ -381,7 +381,7 @@ function rebuild(fromPreset){
   if(cur){holder.remove(cur);freeGroup(cur);}if(curGeo)curGeo.dispose();
   curGeo=geomFor(st);cur=groupFor(st,curGeo);holder.add(cur);
   const sc=scaleOf(st);
-  Cz=(HT(st)-baseT(st))*sc/2;if(fromPreset||sc!==lastScale){zoom=1;panX=panY=0;}lastScale=sc;
+  Cz=(ZT-baseT(st))*sc/2;if(fromPreset||sc!==lastScale){zoom=1;panX=panY=0;}lastScale=sc;
   if(fromPreset){cut=!!st.wall;document.getElementById('t-cut').setAttribute('aria-pressed',cut);}
   setClip(cut);
   GROUPS.forEach(g=>g.opts.forEach(([v],i)=>document.getElementById(`o-${g.key}-${i}`).setAttribute('aria-pressed',st[g.key]===v)));
@@ -401,7 +401,7 @@ function proj(q){const b=basis(yaw,pitch),x=q[0]*K,y=q[1]*K,z=q[2]-Cz;
   return [W/2+panX+(x*b.r[0]+y*b.r[1])*S,H/2+panY-(x*b.u[0]+y*b.u[1]+z*b.u[2])*S];}
 function draw(){
   const sc=scaleOf(st);
-  S=Math.min(W*3,H)/((HT(st)+baseT(st))*sc*1.15)*zoom;
+  S=Math.min(W*3,H)/((ZT+baseT(st))*sc*1.15)*zoom;
   holder.scale.set(K*sc,K*sc,sc);axes.scale.set(K,K,1);
   aimCam(cam,basis(yaw,pitch),Cz,W,H,S,panX,panY);R.render(scene,cam);
   octx.clearRect(0,0,W,H);const muted=css('--muted');
@@ -480,7 +480,7 @@ function pump(){busy=true;const job=queue.shift();if(!job){busy=false;setClip(cu
   const [card,s]=job,g=geomFor(s),grp=groupFor(s,g),sc=scaleOf(s);
   TR.setClearColor(new THREE.Color(css('--sheet')));
   tholder.add(grp);tholder.scale.set(K*sc,K*sc,sc);setClip(!!s.wall);
-  aimCam(tcam,basis(-0.75,0.3),(HT(s)-baseT(s))*sc/2,TW,TH,TH/((HT(s)+baseT(s))*sc*1.12),0,0);TR.render(tscene,tcam);
+  aimCam(tcam,basis(-0.75,0.3),(ZT-baseT(s))*sc/2,TW,TH,TH/((ZT+baseT(s))*sc*1.12),0,0);TR.render(tscene,tcam);
   const url=TR.domElement.toDataURL('image/png');tholder.remove(grp);freeGroup(grp);g.dispose();
   const img=document.createElement('img');img.alt=nameOf(s);img.src=url;card.replaceChild(img,card.firstElementChild);
   setClip(cut);setTimeout(pump,0);}
