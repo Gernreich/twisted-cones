@@ -410,7 +410,8 @@ function makeScene(){const sc=new THREE.Scene();
   const k=new THREE.DirectionalLight(0xffffff,0.85);k.position.set(-1,-1.6,1.4);sc.add(k);
   const f=new THREE.DirectionalLight(0xffffff,0.3);f.position.set(1.2,1,-0.4);sc.add(f);return sc;}
 function basis(yaw,pitch){const cy=Math.cos(yaw),sy=Math.sin(yaw),cp=Math.cos(pitch),sp=Math.sin(pitch);
-  return {u:[sy*sp,-cy*sp,cp],d:[-sy*cp,cy*cp,sp],r:[cy,sy,0]};}
+  // r = screen right, u = screen up, d = view direction; pitch > 0 looks down from above the plate
+  return {u:[-sy*sp,cy*sp,cp],d:[-sy*cp,cy*cp,-sp],r:[cy,sy,0]};}
 // widest reach from the z axis (copies, base and stretch included), so the view fits wide shapes as well as tall ones
 function farOf(s){let f=s.baseOn?baseRadius(s):0;for(let i=0;i<=40;i++)for(const q of slice(s,Math.min(i/40,0.99999),48))f=Math.max(f,Math.hypot(q[0],q[1]));return f;}
 const fitScale=(s,W,H,m)=>Math.min(H/((ZT+baseT(s))*scaleOf(s)*m),W/(2*farOf(s)*scaleOf(s)*m));
@@ -423,7 +424,7 @@ const gl=document.getElementById('gl'),ov=document.getElementById('ov'),octx=ov.
 const scene=makeScene(),cam=new THREE.OrthographicCamera(-1,1,1,-1,1,20000),holder=new THREE.Group();scene.add(holder);
 let plate=null,axes=null,cur=null,curGeo=null,curFar=40;var K=2.6; // var: slice() reads it, and may run before this line
 let yaw=-0.75,pitch=0.3,zoom=1,panX=0,panY=0,anim=null,W=1,H=1,S=1,Cz=120;
-const views={iso:[-0.75,0.3],front:[0,0],side:[-PI/2,0],top:[0,PI/2],under:[-0.75,-0.6]};
+const views={iso:[-0.75,0.3],front:[0,0],side:[PI/2,0],top:[0,PI/2],under:[-0.75,-0.6]}; // front: from −y; side: from +x; top: from above, x right, y up; under: from below
 function buildAxes(){if(axes)scene.remove(axes);
   axes=new THREE.Group();
   [['--axx',[18,0,0]],['--axy',[0,18,0]],['--axz',[0,0,ZT*1.07]]].forEach(([c,e])=>axes.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0,0,0),new THREE.Vector3(...e)]),new THREE.LineBasicMaterial({color:new THREE.Color(css(c))}))));
@@ -459,7 +460,7 @@ function proj(q){const b=basis(yaw,pitch),x=q[0]*K*XY0,y=q[1]*K*XY0,z=q[2]-Cz;
   return [W/2+panX+(x*b.r[0]+y*b.r[1])*S,H/2+panY-(x*b.u[0]+y*b.u[1]+z*b.u[2])*S];}
 function draw(){
   const sc=scaleOf(st);
-  S=Math.min(H/((ZT+baseT(st))*sc*1.15),W/(2*Math.max(curFar,1)*sc*1.15))*zoom;
+  S=Math.min(H/(Math.max(ZT+baseT(st),2*curFar)*sc*1.15),W/(2*Math.max(curFar,1)*sc*1.15))*zoom; // fits side views and the top/under views
   holder.scale.set(sc,sc,sc);axes.scale.set(K*XY0,K*XY0,1);
   aimCam(cam,basis(yaw,pitch),Cz,W,H,S,panX,panY);R.render(scene,cam);
   octx.clearRect(0,0,W,H);const muted=css('--muted');
