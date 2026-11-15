@@ -86,6 +86,10 @@ nav.tabs button:focus-visible{outline:2px solid var(--accent);outline-offset:2px
 .adv{font:12px var(--mono);color:var(--muted);flex-basis:100%}
 .adv summary{cursor:pointer;width:max-content}
 .allrow{display:flex;justify-content:flex-end}
+.tfam{display:grid;gap:3px;padding:4px 6px 6px;border:1px solid var(--grid);border-radius:5px}
+.tfam .cap{font:10.5px var(--mono);color:var(--muted)}
+.tfam .btns{display:flex;flex-wrap:wrap;gap:5px}
+#sec-taper .opts{gap:8px}
 .baseN .lo{min-width:11ch}.baseN .hi{min-width:10ch}.val{min-width:12ch}
 .star{font-size:22px;line-height:1;background:none;border:0;padding:2px 4px;color:var(--accent);cursor:pointer}
 .star:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px}
@@ -554,7 +558,13 @@ addRow(secTwist,'spread',slider('tb',-1,1,0.05,'slows','speeds up'));
 
 // Taper: the curve the size follows up the height; Power brings its own slider
 const secTaper=section('taper','Taper',pick('taper','pw'));
-choiceRow(secTaper,'taper','curve',v=>taperIcon(v,v==='pow'?st.pw:2.5));
+{const row=choiceRow(secTaper,'taper','curve',v=>taperIcon(v,v==='pow'?st.pw:2.5)),box=row.lastElementChild;
+ // families by how the side bows against the straight cone (checked in Rust: sign of f(u) − (1 − u) at u = ¼, ½, ¾), mildest first
+ const FAM=[['Straight',['cone','pow']],['Narrows fast, open tip',['hyper','exp']],['Narrows fast, pointed',['log','hyperC']],
+   ['Holds wide, then closes',['cos','logT','ellip','hyperT']],['Swells out',['swell']]];
+ const opts=GROUPS.find(g=>g.key==='taper').opts.map(o=>o[0]);
+ FAM.forEach(([cap,ks])=>{const d=document.createElement('div');d.className='tfam';d.setAttribute('role','group');d.setAttribute('aria-label',cap);
+   d.innerHTML=`<span class="cap">${cap}</span><div class="btns"></div>`;ks.forEach(k=>d.lastElementChild.appendChild(document.getElementById('o-taper-'+opts.indexOf(k))));box.appendChild(d);});}
 addRow(secTaper,'power',slider('pw',0.1,5,0.1,'dome','bell')).id='powRow';
 document.getElementById('pw').oninput=e=>{st.pw=+e.target.value;st.taper='pow';rebuild(false);};
 
