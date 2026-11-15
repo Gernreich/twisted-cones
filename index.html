@@ -416,7 +416,7 @@ function rebuild(fromPreset){
   {const te=document.getElementById('top');te.value=st.top;document.getElementById('topout').textContent=st.top+'%';['fT','fW','fS'].forEach(k=>{const c=document.getElementById(k);c.checked=st[k]!==false;c.disabled=st.top>=100;});}
   {const pe=document.getElementById('pw');pe.value=st.pw;document.getElementById('pwout').textContent=st.pw+(st.taper==='pow'?'':' (pick Power to use)');}
   {const on=!!st.baseOn;document.getElementById('base-on').setAttribute('aria-pressed',on);document.getElementById('base-off').setAttribute('aria-pressed',!on);
-   const bn=document.getElementById('baseN');bn.value=st.baseN;bn.disabled=!on;document.getElementById('baseNout').textContent=`${st.baseN} × 3 mm`;}
+   const bn=document.getElementById('baseN');bn.value=st.baseN;document.getElementById('baseNout').textContent=`${st.baseN} × 3 mm`;}
   const [rows,far]=stats(st);
   document.getElementById('stats').innerHTML=rows.map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td></tr>`).join('');
   document.getElementById('warn').textContent=warnings(st,far);
@@ -486,7 +486,9 @@ GROUPS.forEach(g=>{const row=document.createElement('div');row.className='row';
   mixer.appendChild(row);
   document.getElementById('base-off').onclick=()=>{st.baseOn=false;rebuild(false);};
   document.getElementById('base-on').onclick=()=>{st.baseOn=true;rebuild(false);};
-  const bn=document.getElementById('baseN');bn.oninput=()=>{st.baseN=+bn.value;document.getElementById('baseNout').textContent=`${st.baseN} × 3 mm`;if(st.baseOn)rebuild(false);else document.getElementById('pname').textContent=nameOf(st);};}
+  const bn=document.getElementById('baseN');bn.oninput=()=>{st.baseN=+bn.value;st.baseOn=true;rebuild(false);};
+  // touching the layers bar switches the base on
+  bn.parentElement.addEventListener('pointerdown',()=>{if(!st.baseOn){st.baseOn=true;rebuild(false);}});}
 
 // ---------- STL: the shape as shown, at true size in mm (no x,y stretch), copies and base included ----------
 function stlFor(s){const g=geomFor(s),grp=groupFor(s,g),tris=[];grp.updateMatrixWorld(true);
