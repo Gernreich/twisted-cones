@@ -71,6 +71,16 @@ nav.tabs button:focus-visible{outline:2px solid var(--accent);outline-offset:2px
 .finish label{display:flex;align-items:center;gap:4px}
 .finish input{accent-color:var(--accent);margin:0}
 .baseN input{flex:1;min-width:0;accent-color:var(--accent)}
+.dual{position:relative;flex:1;min-width:0;height:22px}
+.dual::before{content:"";position:absolute;left:7px;right:7px;top:10px;height:3px;border-radius:2px;background:var(--grid)}
+.dual input{position:absolute;inset:0;width:100%;height:22px;margin:0;background:none;pointer-events:none;-webkit-appearance:none;appearance:none}
+.dual input::-webkit-slider-runnable-track{background:none;height:22px}
+.dual input::-moz-range-track{background:none}
+.dual input::-webkit-slider-thumb{pointer-events:auto;-webkit-appearance:none;width:15px;height:15px;margin-top:3.5px;border-radius:50%;background:var(--accent);border:2px solid var(--sheet);cursor:pointer}
+.dual input::-moz-range-thumb{pointer-events:auto;width:13px;height:13px;border-radius:50%;background:var(--accent);border:2px solid var(--sheet);cursor:pointer}
+.dual #t1::-webkit-slider-thumb{border-radius:2px}
+.dual #t1::-moz-range-thumb{border-radius:2px}
+.dualout{display:flex;flex-wrap:wrap;gap:4px 14px;font:12px var(--mono);color:var(--muted);flex-basis:100%;margin-top:2px}
 .err{padding:16px;font:13px var(--mono);color:var(--muted)}
 html,body{margin:0}
 body{font-size:14px;line-height:1.4}
@@ -422,7 +432,7 @@ function rebuild(fromPreset){
   GROUPS.forEach(g=>g.opts.forEach(([v],i)=>document.getElementById(`o-${g.key}-${i}`).setAttribute('aria-pressed',st[g.key]===v)));
   document.getElementById('pname').textContent=nameOf(st);
   {const we=document.getElementById('wall');we.value=st.wall;document.getElementById('wallout').textContent=st.wall?st.wall.toFixed(1)+' mm':'solid';}
-  ['t0','t1'].forEach(k=>{const e=document.getElementById(k);e.value=st[k];document.getElementById(k+'out').textContent=(+st[k].toFixed(2))+' turns/height';});
+  ['t0','t1'].forEach(k=>{const e=document.getElementById(k);e.value=st[k];document.getElementById(k+'out').textContent=+st[k].toFixed(2);});
   {const ge=document.getElementById('gap');ge.value=st.gap;document.getElementById('gapout').textContent=st.gap?st.gap+' mm':'touching';}
   {const te=document.getElementById('top');te.value=st.top;document.getElementById('topout').textContent=st.top+'%';['fT','fW','fS'].forEach(k=>{const c=document.getElementById(k);c.checked=st[k]!==false;c.disabled=st.top>=100;});}
   {const pe=document.getElementById('pw');pe.value=st.pw;document.getElementById('pwout').textContent=st.pw+(st.taper==='pow'?' (in use)':' (move to use)');}
@@ -481,10 +491,12 @@ GROUPS.forEach(g=>{const row=document.createElement('div');row.className='row';
   g.opts.forEach(([v,t],i)=>{const b=document.createElement('button');b.id=`o-${g.key}-${i}`;b.textContent=t;b.setAttribute('aria-pressed','false');
     b.onclick=()=>{st[g.key]=v;rebuild(false);};box.appendChild(b);});
   mixer.appendChild(row);});
-[['t0','start turns','at the base'],['t1','end turns','at the tip']].reverse().forEach(([k,lab,hint])=>{const row=document.createElement('div');row.className='row';
-  row.innerHTML=`<span>${lab}</span><div class="opts"><label class="baseN" for="${k}">${hint} <input id="${k}" type="range" min="0" max="5" step="0.1" value="1"> <output id="${k}out">1</output></label></div>`;
+// twist rate at the base (round handle) and at the tip (square handle) on one track; the handles may pass each other
+{const row=document.createElement('div');row.className='row';
+  row.innerHTML=`<span>turns</span><div class="opts"><div class="baseN"><span class="dual"><input id="t0" type="range" min="0" max="5" step="0.1" value="1" aria-label="Turns per height at the base"><input id="t1" type="range" min="0" max="5" step="0.1" value="1" aria-label="Turns per height at the tip"></span></div><div class="dualout"><span>● base <output id="t0out">1</output></span><span>■ tip <output id="t1out">1</output></span><span>turns per height</span></div></div>`;
   mixer.querySelector('#o-tip-0').closest('.row').after(row);
-  const e=document.getElementById(k);e.oninput=()=>{st[k]=+e.value;rebuild(false);};});
+  ['t0','t1'].forEach(k=>{const e=document.getElementById(k);e.oninput=()=>{st[k]=+e.value;rebuild(false);};
+    e.addEventListener('pointerdown',()=>{document.getElementById('t0').style.zIndex=k==='t0'?2:1;document.getElementById('t1').style.zIndex=k==='t1'?2:1;});});}
 {const row=document.createElement('div');row.className='row';
   row.innerHTML=`<span>gap</span><div class="opts"><label class="baseN" for="gap">from the axis <input id="gap" type="range" min="0" max="200" step="0.5" value="0"> <output id="gapout">touching</output></label></div>`;
   mixer.querySelector('#o-copies-0').closest('.row').after(row);
