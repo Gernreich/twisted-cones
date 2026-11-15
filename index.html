@@ -187,7 +187,7 @@ const GROUPS=[
  {key:'gap',label:'gap',opts:[[0,'Touching'],[1,'1 mm'],[2,'2 mm'],[4,'4 mm'],[6,'6 mm'],[8,'8 mm'],[12,'12 mm'],[16,'16 mm']]},
 ];
 const BASE={shape:'ellT',tip:'same',t0:1,t1:1,taper:'cone',copies:1,gap:0,wall:0,build:'smooth',baseOn:false,baseN:10,pw:2.5,top:100};
-// render cutoff: the shape stops at top % of its height with a flat top
+// cutoff: the whole shape (taper, twist, shape change) is fitted into top % of the height
 const HT=s=>ZT*(s.top??100)/100;
 const LAYER=3; // mm per base layer (3 mm ply)
 // circular base under z = 0, centred on the z axis, wide enough to take every copy's bottom slice, plus 1 mm
@@ -218,7 +218,7 @@ const SHEET=[
  ['7h','Hyperbola turned τ/4','The closed hyperbola turned a quarter turn, 10(1 − u)/(10 − 9u): it keeps nearly full width almost to the top, then closes sharply.',SB({taper:'hyperT'})],
  ['7i','Logarithmic','Size follows 1 − log₁₀(1 + 9u): a fast start like the hyperbola, gentler after, closing at the tip.',SB({taper:'log'})],
  ['7j','Log turned τ/4','The logarithmic curve turned a quarter turn, (10 − 10^u)/9: an exponential that holds its width and drops away near the top.',SB({taper:'logT'})],
- ['7k','Cut off at 80%','The cone stopped at 80% of its height (933.14), leaving a flat top a fifth the size of the base, the way the open hyperbola ends.',SB({top:80})],
+ ['7k','Cut off at 80%','The whole shape finished in 80% of the height (933.14): the same taper, twist and shape change, just shorter.',SB({top:80})],
  ['7d','Elliptic','Size follows a quarter ellipse, √(1 − u²): full width most of the way up, then a rounded nose.',SB({taper:'ellip'})],
  ['7e','Cosine','Size follows cos(πu/2): a soft shoulder at the base and a pointed tip.',SB({taper:'cos'})],
  ['8','Parabolic (swell)','Size follows the parabola (1 − u)(1 + 3u): it grows to 1.33× a third of the way up, then shrinks to the tip, like a twisted flame.',SB({taper:'swell'})],
@@ -247,8 +247,8 @@ function unit1(shape,phi){const c=Math.cos(phi),s=Math.sin(phi);
     case 'triangle':{const n=3,psi=((phi-PI)%(TAU/n)+TAU/n)%(TAU/n),r=Math.cos(PI/n)/Math.cos(psi-PI/n);return [r*c,r*s];}
     case 'trilobe':{const r=1+0.35*Math.cos(3*(phi-PI));return [r*c,r*s];}
   }}
-// base shape → tip shape; with a cutoff the change finishes at the cut, so the flat top is the tip shape
-function unit(s,phi,u){const a=unit1(s.shape,phi);if(s.tip==='same'||s.tip===s.shape)return a;const b=unit1(s.tip,phi),k=Math.min(1,u*100/(s.top??100));return [a[0]+(b[0]-a[0])*k,a[1]+(b[1]-a[1])*k];}
+// base shape → tip shape (u runs 0 to 1 over the height shown, so with a cutoff everything finishes at the cut)
+function unit(s,phi,u){const a=unit1(s.shape,phi);if(s.tip==='same'||s.tip===s.shape)return a;const b=unit1(s.tip,phi);return [a[0]+(b[0]-a[0])*u,a[1]+(b[1]-a[1])*u];}
 // power taper (1 − u)^pw: below 1 bows out (0.5 = a dome), 1 = the cone, above 1 bows in (2.5 = the bell)
 function rho(t,u,pw=2.5){switch(t){case 'cone':return R0*(1-u);case 'exp':return R0*Math.pow(100,-u);case 'pow':return R0*Math.pow(1-u,pw);case 'swell':return R0*(1-u)*(1+3*u);
     case 'hyper':return R0/(1+9*u);              // 1/x: 10 : 1 at the tip, so it stays open
@@ -291,7 +291,7 @@ function insetRadial(p,w){const n=p.length,c=cen(p);
 function cavity(s,rings){if(!s.wall)return [];const zTop=rings[rings.length-1][0],inner=[];
   for(const [z,p] of rings){if(z>zTop-s.wall)break;const q=inset(p,s.wall);if(!q)break;inner.push([z,q]);}
   return inner.length>1?inner:[];}
-function volumes(s){const NZ=240,NT=96,rings=[];for(let i=0;i<=NZ;i++){const u=i/NZ*HT(s)/ZT;rings.push([u*ZT,slice(s,Math.min(u,0.99999),NT)]);}
+function volumes(s){const NZ=240,NT=96,rings=[];for(let i=0;i<=NZ;i++){const u=i/NZ;rings.push([u*HT(s),slice(s,Math.min(u,0.99999),NT)]);}
   const V=rs=>{let v=0;for(let i=0;i<rs.length-1;i++)v+=(Math.abs(area(rs[i][1]))+Math.abs(area(rs[i+1][1])))/2*(rs[i+1][0]-rs[i][0]);return v;};
   const solid=V(rings),hole=V(cavity(s,rings)),k=s.copies,b=s.baseOn?PI*baseRadius(s)**2*baseT(s):0;
   return {solid:solid*k+b,shown:(solid-hole)*k+b};}
@@ -310,7 +310,7 @@ function nameOf(s){const parts=[];
   if(s.baseOn)parts.push(`circular base, ${s.baseN} layer${s.baseN===1?'':'s'}`);
   return parts.join(' · ');}
 function stats(s){let near=Infinity,far=0;
-  for(let i=0;i<=300;i++){const u=i/300*HT(s)/ZT;for(const q of slice(s,Math.min(u,0.99999),192)){const r=Math.hypot(q[0],q[1]);if(r<near)near=r;if(r>far)far=r;}}
+  for(let i=0;i<=300;i++){const u=i/300;for(const q of slice(s,Math.min(u,0.99999),192)){const r=Math.hypot(q[0],q[1]);if(r<near)near=r;if(r>far)far=r;}}
   let peak=-Infinity;for(let i=0;i<=400;i++)peak=Math.max(peak,theta(s,i/400));
   const sc=scaleOf(s),rows=[['height',(HT(s)*sc).toFixed(2)],['closest to z axis',(near*sc).toFixed(3)],['farthest from z axis',(far*sc).toFixed(3)],
     ['turns, base to tip',((theta(s,1)-theta(s,0))/TAU).toFixed(4)]];
@@ -360,7 +360,7 @@ function geomFor(s){
     const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));g.computeVertexNormals();return g;
   }
   const NZ=Math.max(s.t0,s.t1)>2.5?900:500,rings=[];
-  for(let i=0;i<=NZ;i++){const u=i/NZ*HT(s)/ZT;rings.push([u*ZT,slice(s,Math.min(u,0.99999),NT)]);}
+  for(let i=0;i<=NZ;i++){const u=i/NZ;rings.push([u*HT(s),slice(s,Math.min(u,0.99999),NT)]);}
   const verts=[],idx=[];
   const surf=(rs,flip)=>{const o=verts.length/3;rs.forEach(([z,p])=>p.forEach(q=>verts.push(q[0],q[1],z)));
     for(let i=0;i<rs.length-1;i++)for(let j=0;j<NT;j++){const a=o+i*NT+j,b=o+i*NT+(j+1)%NT,c=a+NT,d=b+NT;flip?idx.push(a,d,b,a,c,d):idx.push(a,b,d,a,d,c);}};

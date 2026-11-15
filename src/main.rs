@@ -164,9 +164,8 @@ fn main() {
     // the power slider at 1 is the linear cone exactly
     let mut c = 0f64; for i in 0..=1000 { let u = i as f64 / 1000.0; c = c.max((rho("pow:1", u) - rho("cone", u)).abs()); }
     check("power 1 == linear cone, worst", c, 0.0, 1e-12);
-    // render cutoff: the cone stopped at 80% is 933.14 tall with a top a fifth the size of the base
+    // cutoff: the whole shape is fitted into 80% of the height, 933.14 tall
     check("7k cutoff 80%: height", ZT * 0.8, 933.142857, 1e-5);
-    check("7k cutoff 80%: top size / base size", rho("cone", 0.8) / rho("cone", 0.0), 0.2, 1e-12);
     // hollow round cone, 1.2 mm wall: the cavity is a cone of radius R - w ending w below the top (where the inner radius reaches 0)
     let (rr, w) = (16.33f64, 1.2f64);
     let solid = PI * rr * rr * ZT / 3.0;
