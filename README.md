@@ -11,8 +11,9 @@ the tip, the curve it tapers along, copies, and a gap at the axis), and a mixer 
 combines any of them, makes it hollow with a wall
 from 0.2 to 10 mm thick (to print with less filament), cuts it off at 10% to 100% of its height (each of
 the taper, the twist and the shape change just stops there, or is ticked to finish at the cut), adds a circular base 1 to 100 layers of 3 mm thick, and
-downloads the shape as an STL file (widened by the
-same x,y stretch the view shows, with gap, wall and base kept in true mm), all lit and turnable in 3D. The taper curves are
+downloads the shape as an STL file. An x,y slider sets the
+width from 0.1 to 100 times; at 1 the shapes are four times as wide as the first
+sweeps (about 150 mm out from the axis). Gap, wall and base stay true mm, all lit and turnable in 3D. The taper curves are
 linear (a cone), geometric (a horn), a power curve (1 − u)^k with k on a slider from
 0.1 to 5 (2.5 is a bell, 0.5 a dome), parabolic (a swell), hyperbolic, a closed hyperbola (the hyperbola shifted to end in a point), the
 closed hyperbola turned τ/4, logarithmic, the log turned τ/4 (an exponential),

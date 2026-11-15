@@ -113,7 +113,7 @@ body{font-size:14px;line-height:1.4}
     </div>
     <aside class="side">
       <div class="row" id="stretchRow"><span>x,y ×</span><div class="opts" role="group" aria-label="Stretch x and y">
-        <button id="k-1">1</button><button id="k-2">2</button><button id="k-4" aria-pressed="true">4</button><button id="k-6">6</button><button id="k-8">8</button><button id="k-10">10</button><button id="k-15">15</button><button id="k-20">20</button><button id="k-30">30</button><button id="k-50">50</button><button id="k-75">75</button><button id="k-100">100</button>
+        <label class="baseN" for="kxy">width <input id="kxy" type="range" min="0" max="300" step="1" value="100"> <output id="kxyout">1</output></label>
       </div></div>
       <div id="sheetSide">
         <h3 id="snum"></h3>
@@ -138,7 +138,7 @@ body{font-size:14px;line-height:1.4}
         <table id="stats"></table>
       </div>
       <p class="note" id="warn"></p>
-      <p class="note">All sizes in mm, z up. x and y are stretched ×4 unless you change it (×1 is the original proportions: about 1166 tall and under 35 wide; up to ×100); the stretch is part of the shape, so the measurements and the STL match the view. Gap, wall and base stay true mm. Drag turns, shift-drag or right-drag pans, wheel zooms.</p>
+      <p class="note">All sizes in mm, z up. x,y × sets the width from 0.1 to 100 times (×1: about 1166 tall and 150 wide, four times as wide as the first sweeps); the stretch is part of the shape, so the measurements and the STL match the view. Gap, wall and base stay true mm. Drag turns, shift-drag or right-drag pans, wheel zooms.</p>
     </aside>
   </div>
 
@@ -172,6 +172,7 @@ body{font-size:14px;line-height:1.4}
 <script>
 (()=>{
 const TAU=2*Math.PI,PI=Math.PI;
+const XY0=4; // the shapes are 4× as wide as the original sweeps, so x,y × 1 looks the way ×4 used to
 const ZT=95+1000*15/14, R0=16.33, T0=ZT/1000; // the sweeps turned tau(z-95)/1000 (1.17 turns over ZT); the variations' base is 1 turn
 const css=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
 
@@ -263,7 +264,7 @@ function rho(t,u,pw=2.5){switch(t){case 'cone':return R0*(1-u);case 'exp':return
 function theta(s,u){return TAU*(-0.095+s.t0*u+(s.t1-s.t0)*u*u/2);}
 const totalTurns=s=>(s.t0+s.t1)/2;
 function slice(s,u,n){const r=rho(s.taper,uf(s,'fT',u),s.pw),uS=uf(s,'fS',u),loc=[];let mx=Infinity;
-  const kx=typeof K==='number'?K:1; // x,y stretch: part of the shape (and the STL), applied before the gap, wall and base
+  const kx=XY0*(typeof K==='number'?K:1); // width: XY0 × the x,y slider, part of the shape (and the STL), applied before the gap, wall and base
   for(let j=0;j<n;j++){const q=unit(s,j/n*TAU,uS);loc.push([q[0]*r*kx,q[1]*r*kx]);if(q[0]*r*kx<mx)mx=q[0]*r*kx;}
   const th=theta(s,uf(s,'fW',u)),c=Math.cos(th),si=Math.sin(th);
   return loc.map(([x,y])=>{const a=x-mx+s.gap;return [a*c-y*si,a*si+y*c];});}
@@ -392,7 +393,7 @@ function aimCam(cam,b,Cz,W,H,S,px,py){
 // ---------- large view ----------
 const gl=document.getElementById('gl'),ov=document.getElementById('ov'),octx=ov.getContext('2d');
 const scene=makeScene(),cam=new THREE.OrthographicCamera(-1,1,1,-1,1,20000),holder=new THREE.Group();scene.add(holder);
-let axes=null,cur=null,curGeo=null,curFar=40;var K=4; // var: slice() reads it, and may run before this line
+let axes=null,cur=null,curGeo=null,curFar=40;var K=1; // var: slice() reads it, and may run before this line
 let yaw=-0.75,pitch=0.3,zoom=1,panX=0,panY=0,anim=null,W=1,H=1,S=1,Cz=583;
 const views={iso:[-0.75,0.3],front:[0,0],side:[-PI/2,0],top:[0,PI/2],under:[-0.75,-0.6]};
 function buildAxes(){if(axes)scene.remove(axes);
@@ -423,19 +424,19 @@ function rebuild(fromPreset){
   draw();}
 function size(){const r=gl.getBoundingClientRect();W=Math.max(1,r.width);H=Math.max(1,r.height);R.setSize(W,H,false);
   const d=devicePixelRatio||1;ov.width=W*d;ov.height=H*d;octx.setTransform(d,0,0,d,0,0);}
-function proj(q){const b=basis(yaw,pitch),x=q[0]*K,y=q[1]*K,z=q[2]-Cz;
+function proj(q){const b=basis(yaw,pitch),x=q[0]*K*XY0,y=q[1]*K*XY0,z=q[2]-Cz;
   return [W/2+panX+(x*b.r[0]+y*b.r[1])*S,H/2+panY-(x*b.u[0]+y*b.u[1]+z*b.u[2])*S];}
 function draw(){
   const sc=scaleOf(st);
   S=Math.min(H/((ZT+baseT(st))*sc*1.15),W/(2*Math.max(curFar,1)*sc*1.15))*zoom;
-  holder.scale.set(sc,sc,sc);axes.scale.set(K,K,1);
+  holder.scale.set(sc,sc,sc);axes.scale.set(K*XY0,K*XY0,1);
   aimCam(cam,basis(yaw,pitch),Cz,W,H,S,panX,panY);R.render(scene,cam);
   octx.clearRect(0,0,W,H);const muted=css('--muted');
   octx.font='600 13px "IBM Plex Mono",monospace';
-  [['--axx',[70+8/K,0,0],'x'],['--axy',[0,70+8/K,0],'y'],['--axz',[0,0,ZT*sc*1.05],'z']].forEach(([c,e,n])=>{const q=proj(e);octx.fillStyle=css(c);octx.fillText(n,q[0]+4,q[1]+4);});
+  [['--axx',[70+8/(K*XY0),0,0],'x'],['--axy',[0,70+8/(K*XY0),0],'y'],['--axz',[0,0,ZT*sc*1.05],'z']].forEach(([c,e,n])=>{const q=proj(e);octx.fillStyle=css(c);octx.fillText(n,q[0]+4,q[1]+4);});
   octx.font='11px "IBM Plex Mono",monospace';octx.fillStyle=muted;
   const step=sc<0.5?50:200;for(let v=step;v<ZT*sc;v+=step){const q=proj([0,0,v]);octx.fillText(v,q[0]-38,q[1]+4);}
-  octx.fillText(`mm · z up · ${K>1?'x and y stretched ×'+K+' (the STL too)':'true proportions'}${sc!==1?' · ¼ scale':''}`,10,16);}
+  octx.fillText(`mm · z up · ${K!==1?'x and y ×'+K+' (the STL too)':'x and y ×1'}${sc!==1?' · ¼ scale':''}`,10,16);}
 function press(prefix,id){document.querySelectorAll(`[id^="${prefix}"]`).forEach(b=>b.setAttribute('aria-pressed',b.id===id));}
 function go(k){press('v-','v-'+k);const [ty,tp]=views[k],y0=yaw,p0=pitch,dy=Math.atan2(Math.sin(ty-y0),Math.cos(ty-y0));panX=panY=0;
   if(matchMedia('(prefers-reduced-motion: reduce)').matches){yaw=ty;pitch=tp;draw();return;}
@@ -443,7 +444,9 @@ function go(k){press('v-','v-'+k);const [ty,tp]=views[k],y0=yaw,p0=pitch,dy=Math
   const step=n=>{const a=Math.min(1,(n-t0)/450),e=a<.5?2*a*a:1-Math.pow(-2*a+2,2)/2;yaw=y0+dy*e;pitch=p0+(tp-p0)*e;draw();if(a<1)anim=requestAnimationFrame(step);};
   anim=requestAnimationFrame(step);}
 Object.keys(views).forEach(k=>document.getElementById('v-'+k).onclick=()=>go(k));
-[1,2,4,6,8,10,15,20,30,50,75,100].forEach(k=>document.getElementById('k-'+k).onclick=()=>{K=k;press('k-','k-'+k);rebuild(false);renderAllThumbs();});
+// log slider: 0..300 → 0.1..100, rounded to two significant figures (100 → exactly 1)
+{const e=document.getElementById('kxy'),fmt=k=>+k.toPrecision(2);let tm=0;
+  e.oninput=()=>{K=fmt(0.1*Math.pow(10,+e.value/100));document.getElementById('kxyout').textContent=K;rebuild(false);clearTimeout(tm);tm=setTimeout(renderAllThumbs,400);};}
 let drag=null,mode='turn',pinch=null;const ptrs=new Map();
 gl.addEventListener('contextmenu',e=>e.preventDefault());
 gl.addEventListener('pointerdown',e=>{gl.setPointerCapture(e.pointerId);ptrs.set(e.pointerId,[e.clientX,e.clientY]);drag=[e.clientX,e.clientY];

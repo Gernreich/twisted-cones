@@ -158,9 +158,9 @@ fn main() {
     check("log turned tau/4 == quarter-turned log, worst", l, 0.0, 1e-9);
     // circular base: centred on the axis, takes every copy's bottom slice, plus 1 mm, rounded up to 0.5 mm
     let base_r = |v: &V| { let r = slice(v, 0.0, 192).iter().map(|q| q.0.hypot(q.1)).fold(0.0, f64::max); ((r + 1.0) * 2.0).ceil() / 2.0 };
-    check("base radius, elliptic cone", base_r(&b), 39.0, 1e-12);
-    check("base radius, circle", base_r(&V { shape: "circle", ..b }), 34.0, 1e-12);
-    check("base radius, 3 copies with an 8 mm gap", base_r(&V { copies: 3, gap: 8.0, ..b }), 44.5, 1e-12);
+    check("base radius, elliptic cone, original width (x,y x0.25)", base_r(&b), 39.0, 1e-12);
+    check("base radius, circle, original width (x,y x0.25)", base_r(&V { shape: "circle", ..b }), 34.0, 1e-12);
+    check("base radius, 3 copies, 8 mm gap, original width (x,y x0.25)", base_r(&V { copies: 3, gap: 8.0, ..b }), 44.5, 1e-12);
     // the power slider at 1 is the linear cone exactly
     let mut c = 0f64; for i in 0..=1000 { let u = i as f64 / 1000.0; c = c.max((rho("pow:1", u) - rho("cone", u)).abs()); }
     check("power 1 == linear cone, worst", c, 0.0, 1e-12);
@@ -171,9 +171,9 @@ fn main() {
     let (rr, w) = (16.33f64, 1.2f64);
     let solid = PI * rr * rr * ZT / 3.0;
     let cav = PI * (rr - w).powi(2) * ZT * (1.0 - w / rr) / 3.0;
-    check("hollow circle cone: solid volume, mm3", solid, 325731.0, 1.0);
-    check("hollow circle cone: shell volume, mm3", solid - cav, 66661.0, 1.0);
-    check("hollow ellipse 1:2 cone 1.2 mm: page says 84% saved (mesh 105970 of 650868)", (100.0f64 * (1.0 - 105970.0 / 650868.0)).round(), 84.0, 0.0);
+    check("hollow circle cone at the original width (x,y x0.25): solid volume, mm3", solid, 325731.0, 1.0);
+    check("hollow circle cone at the original width (x,y x0.25): shell volume, mm3", solid - cav, 66661.0, 1.0);
+    check("hollow ellipse 1:2 cone 1.2 mm at the original width (x,y x0.25): 84% saved (mesh 105970 of 650868)", (100.0f64 * (1.0 - 105970.0 / 650868.0)).round(), 84.0, 0.0);
     // tapers: base size and size at the tip
     for (t, tip) in [("cone", 0.0), ("exp", 0.1633), ("pow:2.5", 0.0), ("pow:0.1", 0.0), ("pow:5", 0.0), ("swell", 0.0), ("hyper", 1.633), ("hyperC", 0.0), ("hyperT", 0.0), ("log", 0.0), ("logT", 0.0), ("ellip", 0.0), ("cos", 0.0)] {
         check(&format!("taper {t}: size at base"), rho(t, 0.0), 16.33, 1e-12);
