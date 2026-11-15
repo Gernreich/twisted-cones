@@ -66,6 +66,8 @@ nav.tabs button{font:500 13px var(--mono);color:var(--muted);background:transpar
 nav.tabs button[aria-current="page"]{color:var(--accent);border-color:var(--grid);background:var(--sheet)}
 nav.tabs button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .pdesc{margin:4px 0 0;line-height:1.5;font-size:14px}
+.baseN{display:flex;align-items:center;gap:6px;font:12px var(--mono);color:var(--muted);flex-basis:100%}
+.baseN input{flex:1;min-width:0;accent-color:var(--accent)}
 .err{padding:16px;font:13px var(--mono);color:var(--muted)}
 html,body{margin:0}
 body{font-size:14px;line-height:1.4}
@@ -131,6 +133,7 @@ body{font-size:14px;line-height:1.4}
       </div>
       </div>
       <div>
+        <div class="actions" style="margin-bottom:10px"><button id="stl">Download STL</button><span class="status" id="stlStatus" role="status"></span></div>
         <h3>Measured from the model</h3>
         <table id="stats"></table>
       </div>
@@ -179,11 +182,15 @@ const GROUPS=[
 // twist rate at the base and at the tip, in turns per full height; the rate changes steadily in between
  {key:'t0',label:'start turns',opts:[[0,'0'],[0.3,'0.3'],[0.5,'0.5'],[1,'1'],[2,'2'],[3,'3'],[5,'5']]},
  {key:'t1',label:'end turns',opts:[[0,'0'],[0.3,'0.3'],[0.5,'0.5'],[1,'1'],[2,'2'],[3,'3'],[5,'5']]},
- {key:'taper',label:'taper',opts:[['cone','Linear (cone)'],['exp','Geometric (horn)'],['bell','Power 2.5 (bell)'],['swell','Parabolic (swell)'],['hyper','Hyperbolic'],['hyperC','Closed hyperbola'],['ellip','Elliptic'],['cos','Cosine']]},
+ {key:'taper',label:'taper',opts:[['cone','Linear (cone)'],['exp','Geometric (horn)'],['bell','Power 2.5 (bell)'],['swell','Parabolic (swell)'],['hyper','Hyperbolic'],['hyperC','Closed hyperbola'],['hyperT','Hyperbola turned τ/4'],['log','Logarithmic'],['logT','Log turned τ/4'],['p05','Power 0.5'],['p08','Power 0.8'],['ellip','Elliptic'],['cos','Cosine']]},
  {key:'copies',label:'copies',opts:[[1,'1'],[2,'2'],[3,'3']]},
  {key:'gap',label:'gap',opts:[[0,'Touching'],[1,'1 mm'],[2,'2 mm'],[4,'4 mm'],[6,'6 mm'],[8,'8 mm'],[12,'12 mm'],[16,'16 mm']]},
 ];
-const BASE={shape:'ellT',tip:'same',t0:1,t1:1,taper:'cone',copies:1,gap:0,wall:0,build:'smooth'};
+const BASE={shape:'ellT',tip:'same',t0:1,t1:1,taper:'cone',copies:1,gap:0,wall:0,build:'smooth',baseOn:false,baseN:10};
+const LAYER=3; // mm per base layer (3 mm ply)
+// circular base under z = 0, centred on the z axis, wide enough to take every copy's bottom slice, plus 1 mm
+function baseRadius(s){let r=0;for(const q of slice(s,0,192))r=Math.max(r,Math.hypot(q[0],q[1]));return Math.ceil((r+1)*2)/2;}
+const baseT=s=>s.baseOn?s.baseN*LAYER:0;
 const S_=o=>Object.assign({},BASE,o);
 const SB=o=>Object.assign({},BASE,{shape:'base'},o);
 const SHEET=[
@@ -204,6 +211,11 @@ const SHEET=[
  ['7b','Power 2.5 (bell)','Size follows (1 − u)^2.5: a wide bell at the base that narrows quickly, then a long slim neck.',SB({taper:'bell'})],
  ['7c','Hyperbolic','Size follows 1/(1 + 9u): it narrows fastest near the base, then slowly, ending 10 : 1 with the tip open.',SB({taper:'hyper'})],
  ['7c2','Closed hyperbola','Size follows (1 − u)/(1 + 9u): the hyperbola with its tip size taken away and stretched back to full width, so the same sharp start ends in a point.',SB({taper:'hyperC'})],
+ ['7f','Power 0.5','Size follows √(1 − u): a parabola on its side, a rounded dome that stays wide and closes in a sharp point.',SB({taper:'p05'})],
+ ['7g','Power 0.8','Size follows (1 − u)^0.8: a cone bowed slightly outward.',SB({taper:'p08'})],
+ ['7h','Hyperbola turned τ/4','The closed hyperbola turned a quarter turn, 10(1 − u)/(10 − 9u): it keeps nearly full width almost to the top, then closes sharply.',SB({taper:'hyperT'})],
+ ['7i','Logarithmic','Size follows 1 − log₁₀(1 + 9u): a fast start like the hyperbola, gentler after, closing at the tip.',SB({taper:'log'})],
+ ['7j','Log turned τ/4','The logarithmic curve turned a quarter turn, (10 − 10^u)/9: an exponential that holds its width and drops away near the top.',SB({taper:'logT'})],
  ['7d','Elliptic','Size follows a quarter ellipse, √(1 − u²): full width most of the way up, then a rounded nose.',SB({taper:'ellip'})],
  ['7e','Cosine','Size follows cos(πu/2): a soft shoulder at the base and a pointed tip.',SB({taper:'cos'})],
  ['8','Parabolic (swell)','Size follows the parabola (1 − u)(1 + 3u): it grows to 1.33× a third of the way up, then shrinks to the tip, like a twisted flame.',SB({taper:'swell'})],
@@ -237,6 +249,12 @@ function rho(t,u){switch(t){case 'cone':return R0*(1-u);case 'exp':return R0*Mat
     case 'hyperC':return R0*(1-u)/(1+9*u);       // the hyperbola less its tip size, rescaled: closes at the tip
     case 'ellip':return R0*Math.sqrt(1-u*u);     // quarter ellipse: full width held, then a rounded nose
     case 'cos':return R0*Math.cos(PI*u/2);       // cosine: a soft shoulder and a pointed tip
+    // 'turned τ/4': the profile turned a quarter turn in the (height, size) square, so it bulges out instead of in: g(u) = 1 − f⁻¹(1 − u)
+    case 'hyperT':return R0*10*(1-u)/(10-9*u);  // closed hyperbola turned: full width almost to the top, then a sharp close
+    case 'log':return R0*(1-Math.log(1+9*u)/Math.LN10); // logarithmic: a fast start like the hyperbola, gentler after
+    case 'logT':return R0*(10-Math.pow(10,u))/9; // log turned: an exponential that holds width and drops at the top
+    case 'p05':return R0*Math.sqrt(1-u);         // power 0.5: a parabola on its side, a rounded dome with a sharp tip
+    case 'p08':return R0*Math.pow(1-u,0.8);      // power 0.8: a cone bowed slightly outward
   }}
 // rate goes steadily from t0 to t1 turns per height, so the turn so far is t0·u + (t1 − t0)·u²/2
 function theta(s,u){return TAU*(-0.095+s.t0*u+(s.t1-s.t0)*u*u/2);}
@@ -257,6 +275,7 @@ function nameOf(s){const parts=[];
   if(s.gap)parts.push(s.gap+' mm gap');
   if(s.wall)parts.push('hollow');
   if(s.build!=='smooth')parts.push(lbl('build',s.build));
+  if(s.baseOn)parts.push(`circular base, ${s.baseN} layer${s.baseN===1?'':'s'}`);
   return parts.join(' · ');}
 function stats(s){let near=Infinity,far=0;
   for(let i=0;i<300;i++){const u=i/300;for(const q of slice(s,u,192)){const r=Math.hypot(q[0],q[1]);if(r<near)near=r;if(r>far)far=r;}}
@@ -265,6 +284,7 @@ function stats(s){let near=Infinity,far=0;
     ['turns, base to tip',((theta(s,1)-theta(s,0))/TAU).toFixed(4)]];
   if(s.wall)rows.push(['wall',(s.wall*sc).toFixed(2)]);
   if(s.build!=='smooth')rows.push(['layers of 3 mm',Math.floor(ZT*sc/3)]);
+  if(s.baseOn){rows.push(['base radius',baseRadius(s).toFixed(1)]);rows.push(['base thickness',`${s.baseN} × ${LAYER} = ${baseT(s)}`]);rows.push(['height with base',(ZT+baseT(s)).toFixed(2)]);}
   return [rows,far];}
 function warnings(s,far){const w=[];
   if(s.copies>1){ // copies overlap if a point of one copy (away from the shared axis) lies inside another
@@ -321,11 +341,16 @@ function geomFor(s){
     if(s.taper==='exp'){const t=NZ*NT,ti=o2+NZ*NT;for(let j=0;j<NT;j++){const a=t+j,b=t+(j+1)%NT,c=ti+j,d=ti+(j+1)%NT;idx.push(a,d,c,a,b,d);}}
   }else{
     [0,NZ].forEach(i=>{const [z,p]=rings[i],c=cen(p),ci=verts.length/3;verts.push(c[0],c[1],z);
-      for(let j=0;j<NT;j++)idx.push(ci,i*NT+(j+1)%NT,i*NT+j);});
+      for(let j=0;j<NT;j++)i?idx.push(ci,i*NT+j,i*NT+(j+1)%NT):idx.push(ci,i*NT+(j+1)%NT,i*NT+j);});
   }
   const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(verts,3));g.setIndex(idx);g.computeVertexNormals();return g;
 }
-function groupFor(s,g){const grp=new THREE.Group();for(let k=0;k<s.copies;k++){const m=new THREE.Mesh(g,mat);m.rotation.z=TAU*k/s.copies;grp.add(m);}return grp;}
+function baseGeo(R,T){const N=128,pos=[];for(let j=0;j<N;j++){const a=TAU*j/N,b=TAU*(j+1)/N,p=[R*Math.cos(a),R*Math.sin(a)],q=[R*Math.cos(b),R*Math.sin(b)];
+    quad(pos,[p[0],p[1],-T],[q[0],q[1],-T],[q[0],q[1],0],[p[0],p[1],0]);tri(pos,[0,0,0],[p[0],p[1],0],[q[0],q[1],0]);tri(pos,[0,0,-T],[q[0],q[1],-T],[p[0],p[1],-T]);}
+  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));g.computeVertexNormals();return g;}
+function groupFor(s,g){const grp=new THREE.Group();for(let k=0;k<s.copies;k++){const m=new THREE.Mesh(g,mat);m.rotation.z=TAU*k/s.copies;grp.add(m);}
+  if(s.baseOn){const bm=new THREE.Mesh(baseGeo(baseRadius(s),baseT(s)),mat);bm.userData.own=true;grp.add(bm);}return grp;}
+const freeGroup=grp=>grp.children.forEach(m=>{if(m.userData.own)m.geometry.dispose();});
 function makeScene(){const sc=new THREE.Scene();
   sc.add(new THREE.AmbientLight(0xffffff,0.32));
   const k=new THREE.DirectionalLight(0xffffff,0.85);k.position.set(-1,-1.6,1.4);sc.add(k);
@@ -350,14 +375,16 @@ function buildAxes(){if(axes)scene.remove(axes);
   scene.add(axes);}
 let lastScale=null;
 function rebuild(fromPreset){
-  if(cur)holder.remove(cur);if(curGeo)curGeo.dispose();
+  if(cur){holder.remove(cur);freeGroup(cur);}if(curGeo)curGeo.dispose();
   curGeo=geomFor(st);cur=groupFor(st,curGeo);holder.add(cur);
   const sc=scaleOf(st);
-  if(fromPreset||sc!==lastScale){Cz=ZT*sc/2;zoom=1;panX=panY=0;}lastScale=sc;
+  Cz=(ZT-baseT(st))*sc/2;if(fromPreset||sc!==lastScale){zoom=1;panX=panY=0;}lastScale=sc;
   if(fromPreset){cut=!!st.wall;document.getElementById('t-cut').setAttribute('aria-pressed',cut);}
   setClip(cut);
   GROUPS.forEach(g=>g.opts.forEach(([v],i)=>document.getElementById(`o-${g.key}-${i}`).setAttribute('aria-pressed',st[g.key]===v)));
   document.getElementById('pname').textContent=nameOf(st);
+  {const on=!!st.baseOn;document.getElementById('base-on').setAttribute('aria-pressed',on);document.getElementById('base-off').setAttribute('aria-pressed',!on);
+   const bn=document.getElementById('baseN');bn.value=st.baseN;bn.disabled=!on;document.getElementById('baseNout').textContent=`${st.baseN} × 3 mm`;}
   const [rows,far]=stats(st);
   document.getElementById('stats').innerHTML=rows.map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td></tr>`).join('');
   document.getElementById('warn').textContent=warnings(st,far);
@@ -369,7 +396,7 @@ function proj(q){const b=basis(yaw,pitch),x=q[0]*K,y=q[1]*K,z=q[2]-Cz;
   return [W/2+panX+(x*b.r[0]+y*b.r[1])*S,H/2+panY-(x*b.u[0]+y*b.u[1]+z*b.u[2])*S];}
 function draw(){
   const sc=scaleOf(st);
-  S=Math.min(W*3,H)/(ZT*sc*1.15)*zoom;
+  S=Math.min(W*3,H)/((ZT+baseT(st))*sc*1.15)*zoom;
   holder.scale.set(K*sc,K*sc,sc);axes.scale.set(K,K,1);
   aimCam(cam,basis(yaw,pitch),Cz,W,H,S,panX,panY);R.render(scene,cam);
   octx.clearRect(0,0,W,H);const muted=css('--muted');
@@ -410,6 +437,28 @@ GROUPS.forEach(g=>{const row=document.createElement('div');row.className='row';
   g.opts.forEach(([v,t],i)=>{const b=document.createElement('button');b.id=`o-${g.key}-${i}`;b.textContent=t;b.setAttribute('aria-pressed','false');
     b.onclick=()=>{st[g.key]=v;rebuild(false);};box.appendChild(b);});
   mixer.appendChild(row);});
+{const row=document.createElement('div');row.className='row';
+  row.innerHTML=`<span>base</span><div class="opts" role="group" aria-label="Base"><button id="base-off">None</button><button id="base-on">Circular</button>`+
+    `<label class="baseN" for="baseN">layers <input id="baseN" type="range" min="1" max="100" step="1" value="10"> <output id="baseNout">10 × 3 mm</output></label></div>`;
+  mixer.appendChild(row);
+  document.getElementById('base-off').onclick=()=>{st.baseOn=false;rebuild(false);};
+  document.getElementById('base-on').onclick=()=>{st.baseOn=true;rebuild(false);};
+  const bn=document.getElementById('baseN');bn.oninput=()=>{st.baseN=+bn.value;document.getElementById('baseNout').textContent=`${st.baseN} × 3 mm`;if(st.baseOn)rebuild(false);else document.getElementById('pname').textContent=nameOf(st);};}
+
+// ---------- STL: the shape as shown, at true size in mm (no x,y stretch), copies and base included ----------
+function stlFor(s){const g=geomFor(s),grp=groupFor(s,g),tris=[];grp.updateMatrixWorld(true);
+  grp.children.forEach(m=>{const pa=m.geometry.attributes.position,ix=m.geometry.index,v=new THREE.Vector3(),pt=i=>{v.fromBufferAttribute(pa,i).applyMatrix4(m.matrixWorld);return [v.x,v.y,v.z];};
+    const n=ix?ix.count:pa.count;for(let i=0;i<n;i+=3){const a=ix?ix.getX(i):i,b=ix?ix.getX(i+1):i+1,c=ix?ix.getX(i+2):i+2;tris.push([pt(a),pt(b),pt(c)]);}});
+  freeGroup(grp);g.dispose();
+  const buf=new ArrayBuffer(84+50*tris.length),dv=new DataView(buf),head='twisted-cones '+nameOf(s);
+  for(let i=0;i<80;i++)dv.setUint8(i,i<head.length?head.charCodeAt(i)&127:32);dv.setUint32(80,tris.length,true);
+  let o=84;for(const [a,b,c] of tris){const u=[b[0]-a[0],b[1]-a[1],b[2]-a[2]],w=[c[0]-a[0],c[1]-a[1],c[2]-a[2]];let nx=u[1]*w[2]-u[2]*w[1],ny=u[2]*w[0]-u[0]*w[2],nz=u[0]*w[1]-u[1]*w[0];const L=Math.hypot(nx,ny,nz)||1;
+    [nx/L,ny/L,nz/L,...a,...b,...c].forEach(x=>{dv.setFloat32(o,x,true);o+=4;});dv.setUint16(o,0,true);o+=2;}
+  return [buf,tris.length];}
+document.getElementById('stl').onclick=()=>{const [buf,n]=stlFor(st),name='twisted-cone-'+nameOf(st).toLowerCase().replace(/[^a-z0-9.]+/g,'-').replace(/^-|-$/g,'')+'.stl';
+  const url=URL.createObjectURL(new Blob([buf],{type:'model/stl'})),a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),5000);
+  const here=/github\.io$/.test(location.hostname)||location.protocol==='file:';
+  document.getElementById('stlStatus').textContent=here?`${name} · ${n} triangles · ${(buf.byteLength/1048576).toFixed(1)} MiB`:'Downloads are blocked here; use gernreich.github.io/twisted-cones';};
 
 // ---------- contact sheets ----------
 const tscene=makeScene(),tcam=new THREE.OrthographicCamera(-1,1,1,-1,1,20000),tholder=new THREE.Group();tscene.add(tholder);
@@ -419,8 +468,8 @@ function pump(){busy=true;const job=queue.shift();if(!job){busy=false;setClip(cu
   const [card,s]=job,g=geomFor(s),grp=groupFor(s,g),sc=scaleOf(s);
   TR.setClearColor(new THREE.Color(css('--sheet')));
   tholder.add(grp);tholder.scale.set(K*sc,K*sc,sc);setClip(!!s.wall);
-  aimCam(tcam,basis(-0.75,0.3),ZT*sc/2,TW,TH,TH/(ZT*sc*1.12),0,0);TR.render(tscene,tcam);
-  const url=TR.domElement.toDataURL('image/png');tholder.remove(grp);g.dispose();
+  aimCam(tcam,basis(-0.75,0.3),(ZT-baseT(s))*sc/2,TW,TH,TH/((ZT+baseT(s))*sc*1.12),0,0);TR.render(tscene,tcam);
+  const url=TR.domElement.toDataURL('image/png');tholder.remove(grp);freeGroup(grp);g.dispose();
   const img=document.createElement('img');img.alt=nameOf(s);img.src=url;card.replaceChild(img,card.firstElementChild);
   setClip(cut);setTimeout(pump,0);}
 function makeCard(num,title,s){const b=document.createElement('button');b.className='card';b.type='button';b.dataset.key=JSON.stringify(s);

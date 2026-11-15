@@ -5,12 +5,16 @@
 **[Open the variations](https://gernreich.github.io/twisted-cones/)**
 
 A cone, offset so one side runs up the z axis, and twisted around that axis. Every
-slice is level with the x/y plane and touches the z axis. The page shows 24
+slice is level with the x/y plane and touches the z axis. The page shows 29
 variations on a contact sheet (slice shape, how fast it twists at the base and at
 the tip, the curve it tapers along, copies, and a gap at the axis), and a mixer that
-combines any of them, all lit and turnable in 3D. The taper curves are linear (a cone), geometric (a horn), power 2.5 (a bell),
-parabolic (a swell), hyperbolic, a closed hyperbola (the hyperbola shifted to end in a
-point), elliptic and cosine.
+combines any of them, adds a circular base 1 to 100 layers of 3 mm thick, and
+downloads the shape as an STL file, all lit and turnable in 3D. The taper curves are
+linear (a cone), geometric (a horn), power 0.5, 0.8 and 2.5 (a bell), parabolic (a
+swell), hyperbolic, a closed hyperbola (the hyperbola shifted to end in a point), the
+closed hyperbola turned τ/4, logarithmic, the log turned τ/4 (an exponential),
+elliptic and cosine. Turning a curve τ/4 here means turning its profile a quarter
+turn in the height-by-size square, so it bulges out where it used to bulge in.
 
 It grew in four steps, each kept as its own page:
 

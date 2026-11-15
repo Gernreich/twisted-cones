@@ -54,7 +54,9 @@ fn unit(v: &V, phi: f64, u: f64) -> (f64, f64) {
 fn rho(taper: &str, u: f64) -> f64 {
     let r0 = 16.33;
     match taper { "cone" => r0 * (1.0 - u), "exp" => r0 * 100f64.powf(-u), "bell" => r0 * (1.0 - u).powf(2.5), "swell" => r0 * (1.0 - u) * (1.0 + 3.0 * u),
-        "hyper" => r0 / (1.0 + 9.0 * u), "hyperC" => r0 * (1.0 - u) / (1.0 + 9.0 * u), "ellip" => r0 * (1.0 - u * u).sqrt(), "cos" => r0 * (PI * u / 2.0).cos(), _ => panic!() }
+        "hyper" => r0 / (1.0 + 9.0 * u), "hyperC" => r0 * (1.0 - u) / (1.0 + 9.0 * u),
+        "hyperT" => r0 * 10.0 * (1.0 - u) / (10.0 - 9.0 * u), "log" => r0 * (1.0 - (1.0 + 9.0 * u).ln() / 10f64.ln()),
+        "logT" => r0 * (10.0 - 10f64.powf(u)) / 9.0, "p05" => r0 * (1.0 - u).sqrt(), "p08" => r0 * (1.0 - u).powf(0.8), "ellip" => r0 * (1.0 - u * u).sqrt(), "cos" => r0 * (PI * u / 2.0).cos(), _ => panic!() }
 }
 // twist rate runs steadily from t0 to t1 turns per full height
 fn theta(v: &V, u: f64) -> f64 { TAU * (-0.095 + v.t0 * u + (v.t1 - v.t0) * u * u / 2.0) }
@@ -144,8 +146,21 @@ fn main() {
     let mut g = 0f64;
     for i in 0..=1000 { let u = i as f64 / 1000.0; g = g.max((rho("hyperC", u) - (rho("hyper", u) - 1.633) / (16.33 - 1.633) * 16.33).abs()); }
     check("closed hyperbola == hyperbolic less its tip, worst gap", g, 0.0, 1e-9);
+    // "turned tau/4" = the profile turned a quarter turn in the unit (height, size) square: g(u) = 1 - f^-1(1 - u)
+    let inv = |t: &str, y: f64| { let (mut a, mut b) = (0.0, 1.0); for _ in 0..200 { let m = (a + b) / 2.0; if rho(t, m) / 16.33 > y { a = m } else { b = m } } (a + b) / 2.0 };
+    let (mut h, mut l) = (0f64, 0f64);
+    for i in 0..=1000 { let u = i as f64 / 1000.0;
+        h = h.max((rho("hyperT", u) / 16.33 - (1.0 - inv("hyperC", 1.0 - u))).abs());
+        l = l.max((rho("logT", u) / 16.33 - (1.0 - inv("log", 1.0 - u))).abs()); }
+    check("hyperbola turned tau/4 == quarter-turned closed hyperbola, worst", h, 0.0, 1e-9);
+    check("log turned tau/4 == quarter-turned log, worst", l, 0.0, 1e-9);
+    // circular base: centred on the axis, takes every copy's bottom slice, plus 1 mm, rounded up to 0.5 mm
+    let base_r = |v: &V| { let r = slice(v, 0.0, 192).iter().map(|q| q.0.hypot(q.1)).fold(0.0, f64::max); ((r + 1.0) * 2.0).ceil() / 2.0 };
+    check("base radius, elliptic cone", base_r(&b), 39.0, 1e-12);
+    check("base radius, circle", base_r(&V { shape: "circle", ..b }), 34.0, 1e-12);
+    check("base radius, 3 copies with an 8 mm gap", base_r(&V { copies: 3, gap: 8.0, ..b }), 44.5, 1e-12);
     // tapers: base size and size at the tip
-    for (t, tip) in [("cone", 0.0), ("exp", 0.1633), ("bell", 0.0), ("swell", 0.0), ("hyper", 1.633), ("hyperC", 0.0), ("ellip", 0.0), ("cos", 0.0)] {
+    for (t, tip) in [("cone", 0.0), ("exp", 0.1633), ("bell", 0.0), ("swell", 0.0), ("hyper", 1.633), ("hyperC", 0.0), ("hyperT", 0.0), ("log", 0.0), ("logT", 0.0), ("p05", 0.0), ("p08", 0.0), ("ellip", 0.0), ("cos", 0.0)] {
         check(&format!("taper {t}: size at base"), rho(t, 0.0), 16.33, 1e-12);
         check(&format!("taper {t}: size at tip"), rho(t, 1.0), tip, 1e-9);
     }
