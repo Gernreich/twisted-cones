@@ -181,11 +181,12 @@ const SHAPES=[['circle','Circle'],['ellT','Ellipse 1:2'],['ellR','Ellipse outwar
 const GROUPS=[
  {key:'shape',label:'at base',opts:SHAPES},
  {key:'tip',label:'at tip',opts:[['same','Same'],...SHAPES]},
+ {key:'dir',label:'direction',opts:[[1,'Counter-clockwise'],[-1,'Clockwise']]},
 // twist rate at the base and at the tip, in turns per full height; the rate changes steadily in between
  {key:'taper',label:'taper',opts:[['cone','Linear (cone)'],['exp','Geometric (horn)'],['swell','Parabolic (swell)'],['hyper','Hyperbolic'],['hyperC','Closed hyperbola'],['hyperT','Hyperbola turned τ/4'],['log','Logarithmic'],['logT','Log turned τ/4'],['ellip','Elliptic'],['cos','Cosine']]},
  {key:'copies',label:'copies',opts:[[1,'1'],[2,'2'],[3,'3'],[4,'4'],[5,'5']]},
 ];
-const BASE={shape:'ellT',tip:'same',t0:1,t1:1,taper:'cone',copies:1,gap:0,wall:0,build:'smooth',baseOn:false,baseN:2,pw:2.5,top:100,fT:false,fW:false,fS:false};
+const BASE={shape:'ellT',tip:'same',t0:1,t1:1,taper:'cone',copies:1,gap:0,wall:0,build:'smooth',baseOn:false,baseN:5,dir:1,pw:2.5,top:100,fT:false,fW:false,fS:false};
 // cutoff: the whole shape (taper, twist, shape change) is fitted into top % of the height
 const HT=s=>ZT*(s.top??100)/100;
 // u runs 0 to 1 over the height shown; a part not ticked to finish at the cut uses the full-height u, so it just stops there
@@ -267,7 +268,7 @@ const totalTurns=s=>(s.t0+s.t1)/2;
 function slice(s,u,n){const r=rho(s.taper,uf(s,'fT',u),s.pw),uS=uf(s,'fS',u),loc=[];let mx=Infinity;
   const kx=XY0*(typeof K==='number'?K:1); // width: XY0 × the x,y slider, part of the shape (and the STL), applied before the gap, wall and base
   for(let j=0;j<n;j++){const q=unit(s,j/n*TAU,uS);loc.push([q[0]*r*kx,q[1]*r*kx]);if(q[0]*r*kx<mx)mx=q[0]*r*kx;}
-  const th=theta(s,uf(s,'fW',u)),c=Math.cos(th),si=Math.sin(th);
+  const th=(s.dir===-1?-1:1)*theta(s,uf(s,'fW',u)),c=Math.cos(th),si=Math.sin(th); // dir −1: clockwise looking down z (a mirror image)
   return loc.map(([x,y])=>{const a=x-mx+s.gap;return [a*c-y*si,a*si+y*c];});}
 const cen=pts=>{let x=0,y=0;pts.forEach(q=>{x+=q[0];y+=q[1];});return [x/pts.length,y/pts.length];};
 const area=p=>{let a=0;for(let i=0;i<p.length;i++){const q=p[i],w=p[(i+1)%p.length];a+=q[0]*w[1]-w[0]*q[1];}return a/2;};
@@ -303,6 +304,7 @@ function nameOf(s){const parts=[];
   if((s.top??100)<100){const st=[['fT','taper'],['fW','twist'],['fS','shape']].filter(([k])=>s[k]===false).map(([,n])=>n);parts.push(`cut off at ${s.top}%`+(st.length?` (${st.join(', ')} stop${st.length===1?'s':''})`:''));}
   if(s.baseOn)parts.push(`circular base, ${s.baseN} layer${s.baseN===1?'':'s'}`);
   if(typeof K==='number'&&K!==1)parts.push(`x,y ×${K}`);
+  if(s.dir===-1)parts.push('clockwise');
   return parts.join(' · ');}
 // the printed size: every copy's slices plus the base, against the printer's build volume
 function bbox(s){let x0=Infinity,x1=-Infinity,y0=Infinity,y1=-Infinity;
@@ -314,7 +316,7 @@ function stats(s){let near=Infinity,far=0;
   for(let i=0;i<=300;i++){const u=i/300;for(const q of slice(s,Math.min(u,0.99999),192)){const r=Math.hypot(q[0],q[1]);if(r<near)near=r;if(r>far)far=r;}}
   let peak=-Infinity;for(let i=0;i<=400;i++)peak=Math.max(peak,theta(s,i/400));
   const sc=scaleOf(s),rows=[['height',(HT(s)*sc).toFixed(2)],['closest to z axis',(near*sc).toFixed(3)],['farthest from z axis',(far*sc).toFixed(3)],
-    ['turns, base to tip',((theta(s,uf(s,'fW',1))-theta(s,0))/TAU).toFixed(4)]];
+    ['turns, base to tip',((theta(s,uf(s,'fW',1))-theta(s,0))/TAU).toFixed(4)+(s.dir===-1?' clockwise':' counter-clockwise')]];
   {const v=volumes(s);rows.push(['volume, cm³',(v.shown/1000).toFixed(1)]);if(s.wall){rows.push(['wall',s.wall.toFixed(1)]);rows.push(['volume if solid, cm³',(v.solid/1000).toFixed(1)]);rows.push(['material saved',Math.round(100*(1-v.shown/v.solid))+'%']);}}
   if(s.build!=='smooth')rows.push(['layers of 3 mm',Math.floor(ZT*sc/3)]);
   if(s.baseOn){rows.push(['base radius',baseRadius(s).toFixed(1)]);rows.push(['base thickness',`${s.baseN} × ${LAYER} = ${baseT(s)}`]);rows.push(['height with base',(HT(s)+baseT(s)).toFixed(2)]);}
@@ -501,7 +503,7 @@ GROUPS.forEach(g=>{const row=document.createElement('div');row.className='row';
   mixer.appendChild(row);const we=document.getElementById('wall');we.oninput=()=>{st.wall=+we.value;rebuild(false);};}
 {const row=document.createElement('div');row.className='row';
   row.innerHTML=`<span>base</span><div class="opts" role="group" aria-label="Base"><button id="base-off">None</button><button id="base-on">Circular</button>`+
-    `<label class="baseN" for="baseN">layers <input id="baseN" type="range" min="1" max="100" step="1" value="2"> <output id="baseNout">10 × 3 mm</output></label></div>`;
+    `<label class="baseN" for="baseN">layers <input id="baseN" type="range" min="1" max="100" step="1" value="5"> <output id="baseNout">10 × 3 mm</output></label></div>`;
   mixer.appendChild(row);
   document.getElementById('base-off').onclick=()=>{st.baseOn=false;rebuild(false);};
   document.getElementById('base-on').onclick=()=>{st.baseOn=true;rebuild(false);};
