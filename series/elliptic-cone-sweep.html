@@ -1,0 +1,288 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Elliptic Cone Sweep</title>
+<meta name="description" content="Level 1 : 2 ellipses on the spiral centre line, touching the z axis: a slanted elliptic cone, twisted.">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;600&display=swap">
+<style>
+/* layout: one drawing sheet, a tall lit 3D view with its controls, a live readout beside it that stacks under on phones */
+:root{
+  --bg:#f3f5f7; --sheet:#ffffff; --fg:#1d2630; --muted:#5d6b78; --grid:#d9dfe5; --ring:#8a9aaa;
+  --curve:#be123c; --solid:#c46a7e; --path:#b45309; --axx:#c62828; --axy:#2e7d32; --axz:#1565c0;
+  --sans:"IBM Plex Sans",system-ui,sans-serif; --mono:"IBM Plex Mono",ui-monospace,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#12171c; --sheet:#1a2128; --fg:#e4e9ee; --muted:#93a1ae; --grid:#2c3640; --ring:#5f6f7e;
+  --curve:#fda4af; --solid:#d27f92; --path:#fbbf24; --axx:#ef6b6b; --axy:#6cc070; --axz:#64a8f0; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#12171c; --sheet:#1a2128; --fg:#e4e9ee; --muted:#93a1ae; --grid:#2c3640; --ring:#5f6f7e;
+  --curve:#fda4af; --solid:#d27f92; --path:#fbbf24; --axx:#ef6b6b; --axy:#6cc070; --axz:#64a8f0; color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font-family:var(--sans);
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px}
+.wrap{max-width:1150px;margin:0 auto;display:grid;gap:16px}
+h1{font-size:1.35rem;margin:0;text-wrap:balance;font-weight:600}
+.sub{color:var(--muted);margin:4px 0 0;max-width:75ch;line-height:1.5}
+.main{display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:16px}
+@media (max-width:820px){.main{grid-template-columns:minmax(0,1fr)}}
+.view{background:var(--sheet);border:1px solid var(--grid);border-radius:6px;min-width:0;overflow:hidden}
+.stage{position:relative;height:min(78vh,760px)}
+.stage canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+#gl{touch-action:none;cursor:grab}
+#ov{pointer-events:none}
+.bar{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;padding:10px;border-top:1px solid var(--grid)}
+.grp{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.grp>span{font:11px var(--mono);color:var(--muted);letter-spacing:.06em;text-transform:uppercase}
+button{font:500 12px var(--mono);background:transparent;color:var(--fg);border:1px solid var(--grid);border-radius:4px;padding:6px 10px;cursor:pointer}
+button:hover,button[aria-pressed="true"]{border-color:var(--curve);color:var(--curve)}
+button:focus-visible,input:focus-visible{outline:2px solid var(--curve);outline-offset:2px}
+.slider{display:flex;gap:10px;align-items:center;padding:10px;border-top:1px solid var(--grid);font:13px var(--mono)}
+.slider input{flex:1;min-width:0;accent-color:var(--curve)}
+.slider output{min-width:7ch;text-align:right;font-variant-numeric:tabular-nums}
+.side{display:grid;gap:14px;align-content:start;min-width:0}
+.side h2{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0 0 6px}
+table{border-collapse:collapse;width:100%;font:12.5px var(--mono);font-variant-numeric:tabular-nums}
+td,th{padding:3px 0;border-bottom:1px solid var(--grid);text-align:left;font-weight:400}
+th{color:var(--muted);font-size:11px}
+td:not(:first-child),th:not(:first-child){text-align:right}
+.tbl{overflow-x:auto}
+.eq{font:12.5px/1.65 var(--mono);background:var(--sheet);border:1px solid var(--grid);border-radius:6px;padding:10px;overflow-x:auto;white-space:nowrap}
+.note{font-size:13px;color:var(--muted);line-height:1.5;margin:0}
+.err{padding:16px;font:13px var(--mono);color:var(--muted)}
+html,body{margin:0}
+body{font-size:14px;line-height:1.4}
+*,*::before,*::after{box-sizing:border-box}
+[hidden]{display:none!important}
+.back{margin:2px 0 0;font:13px var(--mono)}
+.back a,.sub a{color:var(--accent,var(--curve))}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <h1>Elliptic Cone Sweep</h1>
+    <p class="back"><a href="https://gernreich.github.io/" target="_blank" rel="noopener">← All projects</a> · <a href="../index.html" target="_blank" rel="noopener">Twisted cones</a></p>
+    <p class="sub">A twisted, offset elliptic cone. Every level slice is an ellipse, 1 : 2 like the first ellipse's footprint: across the line from the z axis it is 2ρ wide, along the turn it is 4ρ wide, where ρ is its centre's distance from the axis. Its inner end always touches x = 0, y = 0. The centre follows the amber line, turning counter-clockwise by τ per 1000 of rise, from z = 0 until the ellipse shrinks to nothing on the axis. Untwisted, it is a slanted elliptic cone with one side line on the z axis.</p>
+  </header>
+  <div class="main">
+    <div class="view">
+      <div class="stage">
+        <canvas id="gl" aria-label="Lit 3D view of the twisted elliptic cone"></canvas>
+        <canvas id="ov" aria-hidden="true"></canvas>
+      </div>
+      <div class="slider">
+        <label for="z">slice at z</label>
+        <input id="z" type="range" min="0" max="1166" step="1" value="345">
+        <output id="zout">345</output>
+      </div>
+      <div class="bar">
+        <div class="grp" role="group" aria-label="View"><span>view</span>
+          <button id="v-iso" aria-pressed="true">Iso</button>
+          <button id="v-front">Front XZ</button>
+          <button id="v-side">Side YZ</button>
+          <button id="v-top">Top</button>
+        </div>
+        <div class="grp" role="group" aria-label="Shrink law"><span>law</span>
+          <button id="s-lin" aria-pressed="true">Linear</button>
+          <button id="s-geo">Geometric</button>
+        </div>
+        <div class="grp" role="group" aria-label="Stretch x and y"><span>x,y ×</span>
+          <button id="k-1">1</button>
+          <button id="k-4" aria-pressed="true">4</button>
+          <button id="k-10">10</button>
+        </div>
+        <div class="grp" role="group" aria-label="Show"><span>show</span>
+          <button id="t-solid" aria-pressed="true">Solid</button>
+          <button id="t-rings" aria-pressed="false">Rings</button>
+          <button id="t-path" aria-pressed="true">Centre line</button>
+          <button id="t-twist" aria-pressed="true">Twist</button>
+        </div>
+      </div>
+    </div>
+    <aside class="side">
+      <div>
+        <h2>At z = <span id="rz">345</span></h2>
+        <table id="live"></table>
+      </div>
+      <div>
+        <h2>Sweep</h2>
+        <div class="eq" id="eq"></div>
+      </div>
+      <div>
+        <h2>Check points</h2>
+        <div class="tbl"><table id="keys"></table></div>
+      </div>
+      <p class="note" id="note"></p>
+    </aside>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(()=>{
+const TAU=2*Math.PI;
+const gl=document.getElementById('gl'),ov=document.getElementById('ov'),octx=ov.getContext('2d');
+const css=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+let geo=false,K=4,Z0=345,showSolid=true,showRings=false,showPath=true,twist=1;
+// h = rise from the Spiral Ellipse Sweep's start; the centre line has z = 95 + h
+const radius=h=>{const k=h/1000;return geo?15*Math.pow(1/15,k):15-14*k;};
+const zTop=()=>geo?1095:95+1000*15/14;           // linear: radius reaches 0 at h = 1000·15/14
+const turn=z=>twist*TAU*(z-95)/1000;
+function centre(z){const r=radius(z-95),th=turn(z);return [r*Math.cos(th),r*Math.sin(th),z];}
+// level ellipse slice: radial semi-axis ρ (inner end on the z axis), tangential semi-axis 2ρ, turned by θ
+function pt(u,z){const q=radius(z-95),th=turn(z),a=q+q*Math.cos(u),v=2*q*Math.sin(u);return [a*Math.cos(th)-v*Math.sin(th),a*Math.sin(th)+v*Math.cos(th),z];}
+const f=(v,d=3)=>(Math.abs(v)<5e-4?0:v).toFixed(d);
+const C=[0,0,583];
+let yaw=-0.75,pitch=0.3,zoom=1,panX=0,panY=0,anim=null,W=1,H=1,S=1;
+const views={iso:[-0.75,0.3],front:[0,0],side:[-Math.PI/2,0],top:[0,Math.PI/2]};
+
+if(!window.THREE){document.querySelector('.stage').innerHTML='<p class="err">The 3D library did not load, so the solid cannot be drawn. Reload the page to try again.</p>';return;}
+let R;
+try{R=new THREE.WebGLRenderer({canvas:gl,antialias:true});}
+catch(e){document.querySelector('.stage').innerHTML='<p class="err">This browser has WebGL turned off, so the lit solid cannot be drawn.</p>';return;}
+R.setPixelRatio(devicePixelRatio||1);
+const scene=new THREE.Scene();
+const cam=new THREE.OrthographicCamera(-1,1,1,-1,1,20000);
+scene.add(new THREE.AmbientLight(0xffffff,0.32));
+const key=new THREE.DirectionalLight(0xffffff,0.85);key.position.set(-1,-1.6,1.4);scene.add(key);
+const fill=new THREE.DirectionalLight(0xffffff,0.3);fill.position.set(1.2,1,-0.4);scene.add(fill);
+const world=new THREE.Group();scene.add(world);
+const mat=new THREE.MeshStandardMaterial({color:0x8b74c4,roughness:0.45,metalness:0.15,side:THREE.DoubleSide,polygonOffset:true,polygonOffsetFactor:1,polygonOffsetUnits:1});
+let solid,rings,cur,path,axes;
+const NZ=500,NT=96;
+const V=a=>new THREE.Vector3(...a);
+function buildSolid(){
+  if(solid){world.remove(solid);solid.geometry.dispose();}
+  const pos=[],idx=[],top=zTop();
+  for(let i=0;i<=NZ;i++){const z=top*i/NZ;for(let j=0;j<NT;j++)pos.push(...pt(j/NT*TAU,z));}
+  for(let i=0;i<NZ;i++)for(let j=0;j<NT;j++){const a=i*NT+j,b=i*NT+(j+1)%NT,c=a+NT,d=b+NT;idx.push(a,b,d,a,d,c);}
+  [0,NZ].forEach(i=>{const c=pos.length/3;pos.push(...centre(top*i/NZ));for(let j=0;j<NT;j++)idx.push(c,i*NT+j,i*NT+(j+1)%NT);});
+  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));g.setIndex(idx);g.computeVertexNormals();
+  solid=new THREE.Mesh(g,mat);solid.visible=showSolid;world.add(solid);
+}
+const ringPts=z=>{const a=[];for(let j=0;j<=120;j++)a.push(V(pt(j/120*TAU,z)));return a;};
+function buildRings(){
+  if(rings){world.remove(rings);rings.children.forEach(c=>c.geometry.dispose());}
+  rings=new THREE.Group();const m=new THREE.LineBasicMaterial({color:new THREE.Color(css('--ring'))});
+  for(let z=0;z<=zTop();z+=25)rings.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(ringPts(z)),m));
+  rings.visible=showRings;world.add(rings);
+}
+function buildCur(){
+  if(cur){world.remove(cur);cur.children.forEach(c=>c.geometry.dispose());}
+  cur=new THREE.Group();
+  const lm=new THREE.LineBasicMaterial({color:new THREE.Color(css('--curve')),depthTest:false});
+  const c=centre(Z0);
+  [new THREE.Line(new THREE.BufferGeometry().setFromPoints(ringPts(Z0)),lm),
+   new THREE.Line(new THREE.BufferGeometry().setFromPoints([V([0,0,Z0]),V([2*c[0],2*c[1],Z0])]),lm)].forEach(l=>{l.renderOrder=10;cur.add(l);});
+  world.add(cur);
+}
+function buildPath(){
+  if(path){world.remove(path);path.geometry.dispose();}
+  const a=[],top=zTop();for(let i=0;i<=600;i++)a.push(V(centre(top*i/600)));
+  path=new THREE.Line(new THREE.BufferGeometry().setFromPoints(a),new THREE.LineBasicMaterial({color:new THREE.Color(css('--path')),depthTest:false}));
+  path.renderOrder=9;path.visible=showPath;world.add(path);
+}
+function buildAxes(){
+  if(axes)world.remove(axes);
+  axes=new THREE.Group();
+  [['--axx',[45,0,0]],['--axy',[0,45,0]],['--axz',[0,0,1250]]].forEach(([c,e])=>
+    axes.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([V([0,0,0]),V(e)]),new THREE.LineBasicMaterial({color:new THREE.Color(css(c))}))));
+  const gp=[];
+  for(let v=-40;v<=40;v+=10){gp.push(V([v,-40,0]),V([v,40,0]),V([-40,v,0]),V([40,v,0]));}
+  axes.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(gp),new THREE.LineBasicMaterial({color:new THREE.Color(css('--grid'))})));
+  world.add(axes);
+}
+function theme(){R.setClearColor(new THREE.Color(css('--sheet')));mat.color=new THREE.Color(css('--solid'));buildAxes();buildRings();buildCur();buildPath();}
+function basis(){const cy=Math.cos(yaw),sy=Math.sin(yaw),cp=Math.cos(pitch),sp=Math.sin(pitch);
+  return {u:[sy*sp,-cy*sp,cp],d:[-sy*cp,cy*cp,sp],r:[cy,sy,0]};}
+function proj(p){const b=basis(),x=(p[0]-C[0])*K,y=(p[1]-C[1])*K,z=p[2]-C[2];
+  return [W/2+panX+(x*b.r[0]+y*b.r[1])*S, H/2+panY-(x*b.u[0]+y*b.u[1]+z*b.u[2])*S];}
+function size(){const r=gl.getBoundingClientRect();W=Math.max(1,r.width);H=Math.max(1,r.height);R.setSize(W,H,false);
+  const d=devicePixelRatio||1;ov.width=W*d;ov.height=H*d;octx.setTransform(d,0,0,d,0,0);}
+function label(p,txt,color,dx,dy,font){const q=proj(p);octx.fillStyle=color;octx.font=font||'11px "IBM Plex Mono",monospace';octx.fillText(txt,q[0]+dx,q[1]+dy);}
+function dot(p,c){const q=proj(p);octx.beginPath();octx.arc(q[0],q[1],3.5,0,7);octx.fillStyle=c;octx.fill();}
+function draw(){
+  S=Math.min(W*3,H)/1320*zoom;
+  world.scale.set(K,K,1);
+  const b=basis();
+  cam.left=(-W/2-panX)/S;cam.right=(W/2-panX)/S;cam.top=(H/2+panY)/S;cam.bottom=(-H/2+panY)/S;cam.updateProjectionMatrix();
+  cam.up.set(...b.u);cam.position.set(C[0]-b.d[0]*8000,C[1]-b.d[1]*8000,C[2]-b.d[2]*8000);cam.lookAt(C[0],C[1],C[2]);
+  R.render(scene,cam);
+  octx.clearRect(0,0,W,H);
+  const muted=css('--muted'),fg=css('--fg'),pc=css('--path'),cc=css('--curve');
+  [['--axx',[45/K+2,0,0],'x'],['--axy',[0,45/K+2,0],'y'],['--axz',[0,0,1250],'z']].forEach(([c,e,n])=>label(e,n,css(c),4,4,'600 13px "IBM Plex Mono",monospace'));
+  for(let v=200;v<=1000;v+=200)label([0,0,v],v,muted,-38,4);
+  const c=centre(Z0),far=[2*c[0],2*c[1],Z0];
+  dot([0,0,Z0],fg);dot(far,cc);dot(c,pc);
+  label(c,`centre (${f(c[0],1)}, ${f(c[1],1)}, ${f(c[2],1)})`,pc,8,14);
+  label(far,`(${f(far[0],1)}, ${f(far[1],1)}, ${f(far[2],1)})`,cc,8,-4);
+  label([0,0,Z0],'touches axis',fg,-92,-6);
+  const tq=radius(Z0-95),th=turn(Z0),tip=[tq*Math.cos(th)-2*tq*Math.sin(th),tq*Math.sin(th)+2*tq*Math.cos(th),Z0];dot(tip,cc);
+  if(showPath){[0,zTop()].forEach(z=>{const p=centre(z);dot(p,pc);label(p,`(${f(p[0],2)}, ${f(p[1],2)}, ${f(p[2],2)})`,pc,8,z?-6:14);});}
+  octx.fillStyle=muted;octx.font='11px "IBM Plex Mono",monospace';
+  octx.fillText(`mm · z up · ${K>1?'x and y drawn ×'+K:'true scale'} · drag turns, shift- or right-drag pans, wheel zooms`,10,16);
+}
+function tables(){
+  const h=Z0-95,r=radius(h),c=centre(Z0),th=turn(Z0);
+  document.getElementById('rz').textContent=Z0;
+  document.getElementById('live').innerHTML=[
+    ['turn θ',`${f(th,4)} rad · ${f(th*180/Math.PI,1)}°`],['centre to axis ρ',f(r,4)],['width across (2ρ)',f(2*r,4)],['width along turn (4ρ)',f(4*r,4)],
+    ['centre',`(${f(c[0])}, ${f(c[1])}, ${f(c[2])})`],['far side',`(${f(2*c[0])}, ${f(2*c[1])}, ${f(Z0)})`],['touches axis at',`(0, 0, ${f(Z0)})`]
+  ].map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td></tr>`).join('');
+  const zs=[0,95,345,595,845,1095];if(!geo)zs.push(zTop());
+  document.getElementById('keys').innerHTML='<tr><th>z</th><th>ρ</th><th>centre</th></tr>'+zs.map(z=>{const c=centre(z);
+    return `<tr><td>${f(z,2)}</td><td>${f(radius(z-95),3)}</td><td>(${f(c[0])}, ${f(c[1])})</td></tr>`;}).join('');
+  document.getElementById('eq').innerHTML=
+    `h = z − 95, k = h/1000<br>ρ = ${geo?'15·15<sup>−k</sup>':'15 − 14k'}<br>θ = τk<br>`+
+    `${twist?'':'(twist off: θ = 0)<br>'}a = ρ + ρ cos u, v = 2ρ sin u<br>x = a cos θ − v sin θ<br>y = a sin θ + v cos θ<br>z from 0 to ${f(zTop(),2)}`;
+  document.getElementById('note').textContent=geo
+    ?'Under the geometric law ρ never reaches 0, so the solid is no longer a true cone and stops at z = 1095 with an ellipse 2 by 4. The z axis runs along one side all the way up, since every slice touches it.'
+    :'The solid is every slice from z = 0 (32.66 across, 65.32 along the turn) to the tip at (0, 0, 1166.43), 1.071 turns later. The z axis runs along one side all the way up, since every slice touches it. The heavy ellipse and its short axis through the z axis show the slider position. Twist off shows the same cone straight.';
+  const zin=document.getElementById('z');zin.max=Math.floor(zTop());if(Z0>zin.max){Z0=+zin.max;zin.value=Z0;document.getElementById('zout').textContent=Z0;}
+}
+function press(prefix,id){document.querySelectorAll(`[id^="${prefix}"]`).forEach(b=>b.setAttribute('aria-pressed',b.id===id));}
+function go(k){
+  press('v-','v-'+k);
+  const [ty,tp]=views[k],y0=yaw,p0=pitch,dy=Math.atan2(Math.sin(ty-y0),Math.cos(ty-y0));panX=panY=0;
+  if(matchMedia('(prefers-reduced-motion: reduce)').matches){yaw=ty;pitch=tp;draw();return;}
+  const t0=performance.now();cancelAnimationFrame(anim);
+  const step=n=>{const a=Math.min(1,(n-t0)/450),e=a<.5?2*a*a:1-Math.pow(-2*a+2,2)/2;yaw=y0+dy*e;pitch=p0+(tp-p0)*e;draw();if(a<1)anim=requestAnimationFrame(step);};
+  anim=requestAnimationFrame(step);
+}
+Object.keys(views).forEach(k=>document.getElementById('v-'+k).onclick=()=>go(k));
+const setLaw=g=>{geo=g;press('s-',g?'s-geo':'s-lin');tables();buildSolid();buildRings();buildCur();buildPath();draw();};
+document.getElementById('s-lin').onclick=()=>setLaw(false);
+document.getElementById('s-geo').onclick=()=>setLaw(true);
+[1,4,10].forEach(k=>document.getElementById('k-'+k).onclick=()=>{K=k;press('k-','k-'+k);draw();});
+const tog=(id,get,set)=>{const b=document.getElementById(id);b.onclick=()=>{set(!get());b.setAttribute('aria-pressed',get());draw();};};
+tog('t-solid',()=>showSolid,v=>{showSolid=v;solid.visible=v;});
+tog('t-rings',()=>showRings,v=>{showRings=v;rings.visible=v;});
+tog('t-path',()=>showPath,v=>{showPath=v;path.visible=v;});
+tog('t-twist',()=>twist===1,v=>{twist=v?1:0;buildSolid();buildRings();buildCur();buildPath();tables();});
+const zin=document.getElementById('z');
+zin.addEventListener('input',()=>{Z0=+zin.value;document.getElementById('zout').textContent=Z0;buildCur();tables();draw();});
+let drag=null,mode='turn',pinch=null;const ptrs=new Map();
+gl.addEventListener('contextmenu',e=>e.preventDefault());
+gl.addEventListener('pointerdown',e=>{gl.setPointerCapture(e.pointerId);ptrs.set(e.pointerId,[e.clientX,e.clientY]);drag=[e.clientX,e.clientY];
+  mode=(e.shiftKey||e.button===2)?'pan':'turn';gl.style.cursor='grabbing';
+  if(ptrs.size===2){const [a,b]=[...ptrs.values()];pinch=[Math.hypot(a[0]-b[0],a[1]-b[1]),zoom];}});
+gl.addEventListener('pointermove',e=>{if(!ptrs.has(e.pointerId))return;ptrs.set(e.pointerId,[e.clientX,e.clientY]);
+  if(ptrs.size===2&&pinch){const [a,b]=[...ptrs.values()];zoom=Math.max(.3,Math.min(40,pinch[1]*Math.hypot(a[0]-b[0],a[1]-b[1])/pinch[0]));draw();return;}
+  if(!drag)return;const dx=e.clientX-drag[0],dy=e.clientY-drag[1];drag=[e.clientX,e.clientY];
+  if(mode==='pan'){panX+=dx;panY+=dy;}else{yaw+=dx*0.01;pitch=Math.max(-1.57,Math.min(1.57,pitch+dy*0.01));press('v-','');}
+  draw();});
+const up=e=>{ptrs.delete(e.pointerId);if(ptrs.size<2)pinch=null;if(!ptrs.size){drag=null;gl.style.cursor='grab';}};
+gl.addEventListener('pointerup',up);gl.addEventListener('pointercancel',up);
+gl.addEventListener('wheel',e=>{e.preventDefault();const r=gl.getBoundingClientRect(),mx=e.clientX-r.left-W/2,my=e.clientY-r.top-H/2;
+  const z2=Math.max(.3,Math.min(40,zoom*Math.exp(-e.deltaY*0.0015))),k=z2/zoom;panX=mx-(mx-panX)*k;panY=my-(my-panY)*k;zoom=z2;draw();},{passive:false});
+addEventListener('resize',()=>{size();draw();});
+const retheme=()=>{theme();draw();};
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change',retheme);
+new MutationObserver(retheme).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
+tables();buildSolid();theme();size();draw();
+})();
+</script>
+</body>
+</html>

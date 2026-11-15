@@ -1,0 +1,12 @@
+[package]
+name = "twisted-cones"
+version = "0.1.0"
+edition = "2021"
+authors = ["Michael Gernreich", "Claude (Anthropic) <noreply@anthropic.com>"]
+description = "Checks the numbers shown on the Twisted Cones pages"
+license = "CC0-1.0"
+publish = false
+
+[[bin]]
+name = "twisted_cones"
+path = "src/main.rs"

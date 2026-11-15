@@ -1,0 +1,274 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Twisted Ellipse Sweep</title>
+<meta name="description" content="A tilted ellipse swept 1000 up the z axis, turning once and shrinking 10:1 about its end on the axis, with its mirror.">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;600&display=swap">
+<style>
+/* layout: one drawing sheet, a tall lit 3D view with its controls, a live readout beside it that stacks under on phones */
+:root{
+  --bg:#f3f5f7; --sheet:#ffffff; --fg:#1d2630; --muted:#5d6b78; --grid:#d9dfe5; --ring:#8a9aaa;
+  --curve:#c2410c; --solid:#c8794a; --curve2:#1d4ed8; --solid2:#5b86c4; --axx:#c62828; --axy:#2e7d32; --axz:#1565c0;
+  --sans:"IBM Plex Sans",system-ui,sans-serif; --mono:"IBM Plex Mono",ui-monospace,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#12171c; --sheet:#1a2128; --fg:#e4e9ee; --muted:#93a1ae; --grid:#2c3640; --ring:#5f6f7e;
+  --curve:#fb923c; --solid:#d48a5c; --curve2:#60a5fa; --solid2:#6f98d4; --axx:#ef6b6b; --axy:#6cc070; --axz:#64a8f0; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#12171c; --sheet:#1a2128; --fg:#e4e9ee; --muted:#93a1ae; --grid:#2c3640; --ring:#5f6f7e;
+  --curve:#fb923c; --solid:#d48a5c; --curve2:#60a5fa; --solid2:#6f98d4; --axx:#ef6b6b; --axy:#6cc070; --axz:#64a8f0; color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font-family:var(--sans);
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px}
+.wrap{max-width:1150px;margin:0 auto;display:grid;gap:16px}
+h1{font-size:1.35rem;margin:0;text-wrap:balance;font-weight:600}
+.sub{color:var(--muted);margin:4px 0 0;max-width:75ch;line-height:1.5}
+.main{display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:16px}
+@media (max-width:820px){.main{grid-template-columns:minmax(0,1fr)}}
+.view{background:var(--sheet);border:1px solid var(--grid);border-radius:6px;min-width:0;overflow:hidden}
+.stage{position:relative;height:min(78vh,760px)}
+.stage canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+#gl{touch-action:none;cursor:grab}
+#ov{pointer-events:none}
+.bar{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;padding:10px;border-top:1px solid var(--grid)}
+.grp{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.grp>span{font:11px var(--mono);color:var(--muted);letter-spacing:.06em;text-transform:uppercase}
+button{font:500 12px var(--mono);background:transparent;color:var(--fg);border:1px solid var(--grid);border-radius:4px;padding:6px 10px;cursor:pointer}
+button:hover,button[aria-pressed="true"]{border-color:var(--curve);color:var(--curve)}
+button:focus-visible,input:focus-visible{outline:2px solid var(--curve);outline-offset:2px}
+.slider{display:flex;gap:10px;align-items:center;padding:10px;border-top:1px solid var(--grid);font:13px var(--mono)}
+.slider input{flex:1;min-width:0;accent-color:var(--curve)}
+.slider output{min-width:7ch;text-align:right;font-variant-numeric:tabular-nums}
+.side{display:grid;gap:14px;align-content:start;min-width:0}
+.side h2{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0 0 6px}
+table{border-collapse:collapse;width:100%;font:12.5px var(--mono);font-variant-numeric:tabular-nums}
+td,th{padding:3px 0;border-bottom:1px solid var(--grid);text-align:left;font-weight:400}
+th{color:var(--muted);font-size:11px}
+td:not(:first-child),th:not(:first-child){text-align:right}
+.tbl{overflow-x:auto}
+.eq{font:12.5px/1.65 var(--mono);background:var(--sheet);border:1px solid var(--grid);border-radius:6px;padding:10px;overflow-x:auto;white-space:nowrap}
+.note{font-size:13px;color:var(--muted);line-height:1.5;margin:0}
+.err{padding:16px;font:13px var(--mono);color:var(--muted)}
+html,body{margin:0}
+body{font-size:14px;line-height:1.4}
+*,*::before,*::after{box-sizing:border-box}
+[hidden]{display:none!important}
+.back{margin:2px 0 0;font:13px var(--mono)}
+.back a,.sub a{color:var(--accent,var(--curve))}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <h1>Twisted Ellipse Sweep</h1>
+    <p class="back"><a href="https://gernreich.github.io/" target="_blank" rel="noopener">← All projects</a> · <a href="../index.html" target="_blank" rel="noopener">Twisted cones</a></p>
+    <p class="sub">Every position of the ellipse is kept, so the sweep shows as a lit solid. Two ellipses start together: the original from (10, 0, 0) to (0, 0, 190) (copper) and its mirror from (−10, 0, 0) to (0, 0, 190) (blue), both with y within ±10. Both follow the same rule. As each rises by h it turns counter-clockwise about the z axis (seen from above) by τ·h/1000 and shrinks about the shared end at (0, 0, 190), which stays on x = 0, y = 0.</p>
+  </header>
+  <div class="main">
+    <div class="view">
+      <div class="stage">
+        <canvas id="gl" aria-label="Lit 3D view of the solids swept by the ellipse and its mirror"></canvas>
+        <canvas id="ov" aria-hidden="true"></canvas>
+      </div>
+      <div class="slider">
+        <label for="h">ring at h</label>
+        <input id="h" type="range" min="0" max="1000" step="5" value="250">
+        <output id="hout">250</output>
+      </div>
+      <div class="bar">
+        <div class="grp" role="group" aria-label="View"><span>view</span>
+          <button id="v-iso" aria-pressed="true">Iso</button>
+          <button id="v-front">Front XZ</button>
+          <button id="v-side">Side YZ</button>
+          <button id="v-top">Top</button>
+        </div>
+        <div class="grp" role="group" aria-label="Shrink law"><span>shrink</span>
+          <button id="s-lin" aria-pressed="true">Linear</button>
+          <button id="s-geo">Geometric</button>
+        </div>
+        <div class="grp" role="group" aria-label="Stretch x and y"><span>x,y ×</span>
+          <button id="k-1">1</button>
+          <button id="k-4" aria-pressed="true">4</button>
+          <button id="k-10">10</button>
+        </div>
+        <div class="grp" role="group" aria-label="Show"><span>show</span>
+          <button id="t-solid" aria-pressed="true">Solid</button>
+          <button id="t-rings" aria-pressed="false">Rings</button>
+        </div>
+      </div>
+    </div>
+    <aside class="side">
+      <div>
+        <h2>At rise h = <span id="rh">250</span></h2>
+        <table id="live"></table>
+      </div>
+      <div>
+        <h2>Sweep</h2>
+        <div class="eq" id="eq"></div>
+      </div>
+      <div>
+        <h2>Check points</h2>
+        <div class="tbl"><table id="keys"></table></div>
+      </div>
+      <p class="note">Each solid is every position of its ellipse from h = 0 to 1000, closed by its first and last ellipse. The mirror is the original turned 180° about z, so the two wind round each other as a two-start twist and share the axis end. Light comes from the upper left and front, with a weaker fill from behind. The heavy rings are both ellipses at the slider and show through the solids. x and y start stretched ×4 because the true shape is 40 wide and 1190 tall.</p>
+    </aside>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(()=>{
+const TAU=2*Math.PI;
+const gl=document.getElementById('gl'),ov=document.getElementById('ov'),octx=ov.getContext('2d');
+const css=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+let geo=false,K=4,H0=250,showSolid=true,showRings=false;
+const scale=h=>geo?Math.pow(10,-h/1000):1-0.9*h/1000;
+function pt(t,h,m=1){ // m = 1 original, −1 mirrored in x; base ellipse, shrunk about its left end (0,0,190), turned about z, raised by h
+  const s=scale(h),th=TAU*h/1000;
+  const dx=m*(5+5*Math.cos(t))*s,dy=10*Math.sin(t)*s,dz=(95-95*Math.cos(t)-190)*s;
+  return [dx*Math.cos(th)-dy*Math.sin(th),dx*Math.sin(th)+dy*Math.cos(th),190+h+dz];
+}
+const f=(v,d=3)=>(Math.abs(v)<5e-4?0:v).toFixed(d);
+const C=[0,0,600];
+let yaw=-0.75,pitch=0.3,zoom=1,panX=0,panY=0,anim=null,W=1,H=1,S=1;
+const views={iso:[-0.75,0.3],front:[0,0],side:[-Math.PI/2,0],top:[0,Math.PI/2]};
+
+if(!window.THREE){document.querySelector('.stage').innerHTML='<p class="err">The 3D library did not load, so the solid cannot be drawn. Reload the page to try again.</p>';return;}
+let R;
+try{R=new THREE.WebGLRenderer({canvas:gl,antialias:true});}
+catch(e){document.querySelector('.stage').innerHTML='<p class="err">This browser has WebGL turned off, so the lit solid cannot be drawn.</p>';return;}
+R.setPixelRatio(devicePixelRatio||1);
+const scene=new THREE.Scene();
+const cam=new THREE.OrthographicCamera(-1,1,1,-1,1,20000);
+scene.add(new THREE.AmbientLight(0xffffff,0.32));
+const key=new THREE.DirectionalLight(0xffffff,0.85);key.position.set(-1,-1.6,1.4);scene.add(key);
+const fill=new THREE.DirectionalLight(0xffffff,0.3);fill.position.set(1.2,1,-0.4);scene.add(fill);
+const world=new THREE.Group();scene.add(world); // x,y stretch lives here
+const mkMat=c=>new THREE.MeshStandardMaterial({color:c,roughness:0.45,metalness:0.15,side:THREE.DoubleSide,polygonOffset:true,polygonOffsetFactor:1,polygonOffsetUnits:1});
+const mats=[mkMat(0xc8794a),mkMat(0x5b86c4)];
+let solids=[],rings,curRing,axes;
+const NH=400,NT=96;
+function buildSolid(){
+  solids.forEach(o=>{world.remove(o);o.geometry.dispose();});
+  solids=[1,-1].map((m,k)=>{const o=new THREE.Mesh(sweepGeo(m),mats[k]);o.visible=showSolid;world.add(o);return o;});
+}
+function sweepGeo(m){
+  const pos=[],idx=[];
+  for(let i=0;i<=NH;i++){const h=i/NH*1000;for(let j=0;j<NT;j++)pos.push(...pt(j/NT*TAU,h,m));}
+  for(let i=0;i<NH;i++)for(let j=0;j<NT;j++){const a=i*NT+j,b=i*NT+(j+1)%NT,c=a+NT,d=b+NT;idx.push(a,b,d,a,d,c);}
+  [0,NH].forEach(i=>{ // end caps: the first and last ellipse as flat discs
+    const c=pos.length/3;const a=pt(0,i/NH*1000,m),n=pt(Math.PI,i/NH*1000,m);pos.push((a[0]+n[0])/2,(a[1]+n[1])/2,(a[2]+n[2])/2);
+    for(let j=0;j<NT;j++)idx.push(c,i*NT+j,i*NT+(j+1)%NT);});
+  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));g.setIndex(idx);g.computeVertexNormals();
+  return g;
+}
+const ringPts=(h,m=1)=>{const a=[];for(let j=0;j<=120;j++)a.push(new THREE.Vector3(...pt(j/120*TAU,h,m)));return a;};
+function buildRings(){
+  if(rings){world.remove(rings);rings.children.forEach(c=>c.geometry.dispose());}
+  rings=new THREE.Group();const m=new THREE.LineBasicMaterial({color:new THREE.Color(css('--ring'))});
+  for(let h=0;h<=1000;h+=25)[1,-1].forEach(s=>rings.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(ringPts(h,s)),m)));
+  rings.visible=showRings;world.add(rings);
+}
+function buildCur(){
+  if(curRing){world.remove(curRing);curRing.children.forEach(c=>c.geometry.dispose());}
+  curRing=new THREE.Group();
+  [[1,'--curve'],[-1,'--curve2']].forEach(([m,c])=>{const l=new THREE.Line(new THREE.BufferGeometry().setFromPoints(ringPts(H0,m)),new THREE.LineBasicMaterial({color:new THREE.Color(css(c)),depthTest:false}));l.renderOrder=10;curRing.add(l);});
+  world.add(curRing);
+}
+function buildAxes(){
+  if(axes)world.remove(axes);
+  axes=new THREE.Group();
+  [['--axx',[40,0,0]],['--axy',[0,40,0]],['--axz',[0,0,1300]]].forEach(([c,e])=>
+    axes.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0,0,0),new THREE.Vector3(...e)]),new THREE.LineBasicMaterial({color:new THREE.Color(css(c))}))));
+  const gm=new THREE.LineBasicMaterial({color:new THREE.Color(css('--grid'))}),gp=[];
+  for(let v=-30;v<=30;v+=10){gp.push(new THREE.Vector3(v,-30,0),new THREE.Vector3(v,30,0),new THREE.Vector3(-30,v,0),new THREE.Vector3(30,v,0));}
+  axes.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(gp),gm));
+  world.add(axes);
+}
+function theme(){
+  R.setClearColor(new THREE.Color(css('--sheet')));mats[0].color=new THREE.Color(css('--solid'));mats[1].color=new THREE.Color(css('--solid2'));
+  buildAxes();buildRings();buildCur();
+}
+// camera: same yaw/pitch convention as the overlay's projection
+function basis(){const cy=Math.cos(yaw),sy=Math.sin(yaw),cp=Math.cos(pitch),sp=Math.sin(pitch);
+  return {r:[cy,sy,0],u:[sy*sp,-cy*sp,cp],d:[-sy*cp,cy*cp,sp]};}
+function proj(p){const b=basis(),x=(p[0]-C[0])*K,y=(p[1]-C[1])*K,z=p[2]-C[2];
+  return [W/2+panX+(x*b.r[0]+y*b.r[1])*S, H/2+panY-(x*b.u[0]+y*b.u[1]+z*b.u[2])*S];}
+function size(){const r=gl.getBoundingClientRect();W=Math.max(1,r.width);H=Math.max(1,r.height);R.setSize(W,H,false);
+  const d=devicePixelRatio||1;ov.width=W*d;ov.height=H*d;octx.setTransform(d,0,0,d,0,0);}
+function label(p,txt,color,dx,dy,font){const q=proj(p);octx.fillStyle=color;octx.font=font||'11px "IBM Plex Mono",monospace';octx.fillText(txt,q[0]+dx,q[1]+dy);}
+function draw(){
+  S=Math.min(W*3,H)/1350*zoom;
+  world.scale.set(K,K,1);
+  const b=basis();
+  cam.left=(-W/2-panX)/S;cam.right=(W/2-panX)/S;cam.top=(H/2+panY)/S;cam.bottom=(-H/2+panY)/S;cam.updateProjectionMatrix();
+  cam.up.set(...b.u);cam.position.set(C[0]-b.d[0]*8000,C[1]-b.d[1]*8000,C[2]-b.d[2]*8000);cam.lookAt(C[0],C[1],C[2]);
+  R.render(scene,cam);
+  octx.clearRect(0,0,W,H);
+  const muted=css('--muted'),fg=css('--fg');
+  [['--axx',[40/K+2,0,0],'x'],['--axy',[0,40/K+2,0],'y'],['--axz',[0,0,1300],'z']].forEach(([c,e,n])=>label(e,n,css(c),4,4,'600 13px "IBM Plex Mono",monospace'));
+  for(let v=200;v<=1200;v+=200)label([0,0,v],v,muted,-38,4);
+  [[Math.PI,1,fg],[0,1,css('--curve')],[0,-1,css('--curve2')]].forEach(([t,m,c])=>{const p=pt(t,H0,m),q=proj(p);octx.beginPath();octx.arc(q[0],q[1],3.5,0,7);octx.fillStyle=c;octx.fill();
+    label(p,`(${f(p[0],1)}, ${f(p[1],1)}, ${f(p[2],1)})`,c,8,4);});
+  octx.fillStyle=muted;octx.font='11px "IBM Plex Mono",monospace';
+  octx.fillText(`mm · z up · ${K>1?'x and y drawn ×'+K:'true scale'} · drag turns, shift- or right-drag pans, wheel zooms`,10,16);
+}
+function tables(){
+  const s=scale(H0),th=TAU*H0/1000,L=pt(Math.PI,H0),Rr=pt(0,H0),M=pt(0,H0,-1),Y=pt(TAU/4,H0);
+  document.getElementById('rh').textContent=H0;
+  document.getElementById('live').innerHTML=[
+    ['turn θ',`${f(th,4)} rad · ${f(H0*0.36,1)}°`],['size s',f(s,4)],
+    ['shared axis end',`(${f(L[0])}, ${f(L[1])}, ${f(L[2])})`],['original far end',`(${f(Rr[0])}, ${f(Rr[1])}, ${f(Rr[2])})`],['mirror far end',`(${f(M[0])}, ${f(M[1])}, ${f(M[2])})`],
+    ['original t = 90°',`(${f(Y[0])}, ${f(Y[1])}, ${f(Y[2])})`],['long axis',f(Math.hypot(10,190)*s)],['short axis',f(20*s)]
+  ].map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td></tr>`).join('');
+  document.getElementById('keys').innerHTML='<tr><th>h</th><th>s</th><th>original far end</th></tr>'+[0,250,500,750,1000].map(h=>{const r=pt(0,h);
+    return `<tr><td>${h}</td><td>${f(scale(h),4)}</td><td>(${f(r[0])}, ${f(r[1])}, ${f(r[2])})</td></tr>`;}).join('');
+  document.getElementById('eq').innerHTML=
+    `s(h) = ${geo?'10<sup>−h/1000</sup>':'1 − 0.9·h/1000'}<br>θ(h) = τ·h/1000<br>`+
+    `u = s·(5 + 5 cos t)<br>v = s·10 sin t<br>`+
+    `x = u cos θ − v sin θ<br>y = u sin θ + v cos θ<br>z = 190 + h − s·95(1 + cos t)`;
+}
+function press(prefix,id){document.querySelectorAll(`[id^="${prefix}"]`).forEach(b=>b.setAttribute('aria-pressed',b.id===id));}
+function go(k){
+  press('v-','v-'+k);
+  const [ty,tp]=views[k],y0=yaw,p0=pitch,dy=Math.atan2(Math.sin(ty-y0),Math.cos(ty-y0));panX=panY=0;
+  if(matchMedia('(prefers-reduced-motion: reduce)').matches){yaw=ty;pitch=tp;draw();return;}
+  const t0=performance.now();cancelAnimationFrame(anim);
+  const step=n=>{const a=Math.min(1,(n-t0)/450),e=a<.5?2*a*a:1-Math.pow(-2*a+2,2)/2;yaw=y0+dy*e;pitch=p0+(tp-p0)*e;draw();if(a<1)anim=requestAnimationFrame(step);};
+  anim=requestAnimationFrame(step);
+}
+Object.keys(views).forEach(k=>document.getElementById('v-'+k).onclick=()=>go(k));
+const setLaw=g=>{geo=g;press('s-',g?'s-geo':'s-lin');buildSolid();buildRings();buildCur();tables();draw();};
+document.getElementById('s-lin').onclick=()=>setLaw(false);
+document.getElementById('s-geo').onclick=()=>setLaw(true);
+[1,4,10].forEach(k=>document.getElementById('k-'+k).onclick=()=>{K=k;press('k-','k-'+k);draw();});
+const tSolid=document.getElementById('t-solid'),tRings=document.getElementById('t-rings');
+tSolid.onclick=()=>{showSolid=!showSolid;solids.forEach(o=>o.visible=showSolid);tSolid.setAttribute('aria-pressed',showSolid);draw();};
+tRings.onclick=()=>{showRings=!showRings;rings.visible=showRings;tRings.setAttribute('aria-pressed',showRings);draw();};
+const hin=document.getElementById('h');
+hin.addEventListener('input',()=>{H0=+hin.value;document.getElementById('hout').textContent=H0;buildCur();tables();draw();});
+let drag=null,mode='turn',pinch=null;const ptrs=new Map();
+gl.addEventListener('contextmenu',e=>e.preventDefault());
+gl.addEventListener('pointerdown',e=>{gl.setPointerCapture(e.pointerId);ptrs.set(e.pointerId,[e.clientX,e.clientY]);drag=[e.clientX,e.clientY];
+  mode=(e.shiftKey||e.button===2)?'pan':'turn';gl.style.cursor='grabbing';
+  if(ptrs.size===2){const [a,b]=[...ptrs.values()];pinch=[Math.hypot(a[0]-b[0],a[1]-b[1]),zoom];}});
+gl.addEventListener('pointermove',e=>{if(!ptrs.has(e.pointerId))return;ptrs.set(e.pointerId,[e.clientX,e.clientY]);
+  if(ptrs.size===2&&pinch){const [a,b]=[...ptrs.values()];zoom=Math.max(.3,Math.min(40,pinch[1]*Math.hypot(a[0]-b[0],a[1]-b[1])/pinch[0]));draw();return;}
+  if(!drag)return;const dx=e.clientX-drag[0],dy=e.clientY-drag[1];drag=[e.clientX,e.clientY];
+  if(mode==='pan'){panX+=dx;panY+=dy;}else{yaw+=dx*0.01;pitch=Math.max(-1.57,Math.min(1.57,pitch+dy*0.01));press('v-','');}
+  draw();});
+const up=e=>{ptrs.delete(e.pointerId);if(ptrs.size<2)pinch=null;if(!ptrs.size){drag=null;gl.style.cursor='grab';}};
+gl.addEventListener('pointerup',up);gl.addEventListener('pointercancel',up);
+gl.addEventListener('wheel',e=>{e.preventDefault();const r=gl.getBoundingClientRect(),mx=e.clientX-r.left-W/2,my=e.clientY-r.top-H/2;
+  const z2=Math.max(.3,Math.min(40,zoom*Math.exp(-e.deltaY*0.0015))),k=z2/zoom;panX=mx-(mx-panX)*k;panY=my-(my-panY)*k;zoom=z2;draw();},{passive:false});
+addEventListener('resize',()=>{size();draw();});
+const retheme=()=>{theme();draw();};
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change',retheme);
+new MutationObserver(retheme).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
+buildSolid();theme();tables();size();draw();
+})();
+</script>
+</body>
+</html>

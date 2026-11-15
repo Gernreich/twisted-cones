@@ -1,0 +1,475 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Twisted Cone Variations</title>
+<meta name="description" content="Every variation of the twisted, offset cone as a lit contact sheet, and a mixer that combines slice, twist, taper, copies, gap, wall and 3 mm layers.">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;600&display=swap">
+<style>
+/* layout: a large lit viewer with a mixing panel beside it, then contact sheets of saved combinations and starting points */
+:root{
+  --bg:#f3f5f7; --sheet:#ffffff; --fg:#1d2630; --muted:#5d6b78; --grid:#d9dfe5;
+  --accent:#9a3412; --solid:#b8794e; --axx:#c62828; --axy:#2e7d32; --axz:#1565c0;
+  --sans:"IBM Plex Sans",system-ui,sans-serif; --mono:"IBM Plex Mono",ui-monospace,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#12171c; --sheet:#1a2128; --fg:#e4e9ee; --muted:#93a1ae; --grid:#2c3640;
+  --accent:#fdba74; --solid:#c98d62; --axx:#ef6b6b; --axy:#6cc070; --axz:#64a8f0; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#12171c; --sheet:#1a2128; --fg:#e4e9ee; --muted:#93a1ae; --grid:#2c3640;
+  --accent:#fdba74; --solid:#c98d62; --axx:#ef6b6b; --axy:#6cc070; --axz:#64a8f0; color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font-family:var(--sans);
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px}
+.wrap{max-width:1240px;margin:0 auto;display:grid;gap:18px}
+h1{font-size:1.35rem;margin:0;text-wrap:balance;font-weight:600}
+h2.sec{font-size:1rem;margin:0;font-weight:600}
+.sub{color:var(--muted);margin:4px 0 0;max-width:80ch;line-height:1.5}
+.main{display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:16px;align-items:start}
+@media (max-width:900px){.main{grid-template-columns:minmax(0,1fr)}}
+.view{background:var(--sheet);border:1px solid var(--grid);border-radius:6px;min-width:0;overflow:hidden}
+.stage{position:relative;height:min(78vh,780px)}
+.stage canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+#gl{touch-action:none;cursor:grab}
+#ov{pointer-events:none}
+.bar{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;padding:10px;border-top:1px solid var(--grid)}
+.grp{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.grp>span{font:11px var(--mono);color:var(--muted);letter-spacing:.06em;text-transform:uppercase}
+button{font:500 12px var(--mono);background:transparent;color:var(--fg);border:1px solid var(--grid);border-radius:4px;padding:6px 9px;cursor:pointer}
+button:hover,button[aria-pressed="true"]{border-color:var(--accent);color:var(--accent)}
+button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+button.primary{background:var(--accent);border-color:var(--accent);color:var(--sheet)}
+button.primary:hover{opacity:.9;color:var(--sheet)}
+.side{display:grid;gap:14px;align-content:start;min-width:0}
+.panel{background:var(--sheet);border:1px solid var(--grid);border-radius:6px;padding:12px;display:grid;gap:10px}
+.row{display:grid;grid-template-columns:78px minmax(0,1fr);gap:8px;align-items:start}
+.row>span{font:11px var(--mono);color:var(--muted);letter-spacing:.06em;text-transform:uppercase;padding-top:7px}
+.opts{display:flex;flex-wrap:wrap;gap:5px}
+.side h3{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0 0 6px;font-weight:500}
+.pname{font-size:1.05rem;font-weight:600;margin:0;line-height:1.35}
+.actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.status{font:12px var(--mono);color:var(--muted)}
+table{border-collapse:collapse;width:100%;font:12.5px var(--mono);font-variant-numeric:tabular-nums}
+td{padding:3px 0;border-bottom:1px solid var(--grid)} td:last-child{text-align:right}
+.note{font-size:13px;color:var(--muted);line-height:1.5;margin:0}
+.sheethead{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:baseline;justify-content:space-between}
+.gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px}
+.card{display:grid;background:var(--sheet);border:1px solid var(--grid);border-radius:6px;padding:0;overflow:hidden;text-align:left;cursor:pointer;color:var(--fg)}
+.card[aria-pressed="true"]{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.card img,.card .ph{display:block;width:100%;aspect-ratio:2/3;object-fit:cover;background:var(--sheet)}
+.card .lab{padding:6px 8px 8px;border-top:1px solid var(--grid);display:grid;gap:2px}
+.card .num{font:11px var(--mono);color:var(--muted)}
+.card .ttl{font:600 12px var(--sans);line-height:1.3}
+.empty{font-size:13px;color:var(--muted);margin:0}
+nav.tabs{display:flex;gap:4px;border-bottom:1px solid var(--grid)}
+nav.tabs button{font:500 13px var(--mono);color:var(--muted);background:transparent;padding:8px 14px;border:1px solid transparent;border-bottom:none;border-radius:6px 6px 0 0;margin-bottom:-1px}
+nav.tabs button[aria-current="page"]{color:var(--accent);border-color:var(--grid);background:var(--sheet)}
+nav.tabs button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.pdesc{margin:4px 0 0;line-height:1.5;font-size:14px}
+.err{padding:16px;font:13px var(--mono);color:var(--muted)}
+html,body{margin:0}
+body{font-size:14px;line-height:1.4}
+*,*::before,*::after{box-sizing:border-box}
+[hidden]{display:none!important}
+.back{margin:2px 0 0;font:13px var(--mono)}
+.back a,.sub a{color:var(--accent,var(--curve))}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <h1>Twisted Cone Variations</h1>
+    <p class="back"><a href="https://gernreich.github.io/" target="_blank" rel="noopener">← All projects</a></p>
+    <p class="sub" id="sub-sheet">Each variation changes one thing about the twisted, offset cone. Every slice is level and touches the z axis (except the gap variations). Height runs 0 to 1166.43, with the same twist rule unless the twist is what varies. The Base slice switch swaps the circle and the 1 : 2 ellipse in every variation that does not change the slice itself. Click any thumbnail to open it in the large view.</p>
+    <p class="sub" id="sub-mix" hidden>Mix any combination of slice, twist, taper, copies, gap, wall and build. Every slice is level; it touches the z axis unless a gap is set. Height runs 0 to 1166.43 (¼ of that for the ¼-scale stack). Start from a thumbnail below or set the buttons yourself, then save combinations you like to the sheet.</p>
+    <p class="sub">How it got here: <a href="series/twisted-ellipse-sweep.html" target="_blank" rel="noopener">Twisted ellipse sweep</a> → <a href="series/spiral-ellipse-sweep.html" target="_blank" rel="noopener">Spiral ellipse sweep</a> → <a href="series/spiral-circle-sweep.html" target="_blank" rel="noopener">Spiral circle sweep</a> → <a href="series/elliptic-cone-sweep.html" target="_blank" rel="noopener">Elliptic cone sweep</a></p>
+  </header>
+  <nav class="tabs" aria-label="Pages">
+    <button type="button" id="tab-sheet" aria-current="page">Contact sheet</button>
+    <button type="button" id="tab-mixer">Mixer</button>
+  </nav>
+
+  <div class="main">
+    <div class="view">
+      <div class="stage">
+        <canvas id="gl" aria-label="Lit 3D view of the current combination"></canvas>
+        <canvas id="ov" aria-hidden="true"></canvas>
+      </div>
+      <div class="bar">
+        <div class="grp" role="group" aria-label="View"><span>view</span>
+          <button id="v-iso" aria-pressed="true">Iso</button>
+          <button id="v-front">Front</button>
+          <button id="v-side">Side</button>
+          <button id="v-top">Top</button>
+          <button id="v-under">Under</button>
+        </div>
+        <div class="grp" role="group" aria-label="Stretch x and y"><span>x,y ×</span>
+          <button id="k-1">1</button>
+          <button id="k-2">2</button>
+          <button id="k-4" aria-pressed="true">4</button>
+          <button id="k-6">6</button>
+          <button id="k-8">8</button>
+          <button id="k-10">10</button>
+        </div>
+        <div class="grp"><span>show</span>
+          <button id="t-cut" aria-pressed="false">Cut away front</button>
+        </div>
+      </div>
+    </div>
+    <aside class="side">
+      <div id="sheetSide">
+        <h3 id="snum"></h3>
+        <p class="pname" id="sname"></p>
+        <p class="pdesc" id="sdesc"></p>
+      </div>
+      <div id="mixSide" hidden style="display:grid;gap:14px">
+      <div class="panel" id="mixer" aria-label="Combine settings"></div>
+      <div>
+        <h3>Current combination</h3>
+        <p class="pname" id="pname"></p>
+      </div>
+      <div class="actions">
+        <button class="primary" id="save">Save to sheet</button>
+        <span class="status" id="status" role="status"></span>
+      </div>
+      </div>
+      <div>
+        <h3>Measured from the model</h3>
+        <table id="stats"></table>
+      </div>
+      <p class="note" id="warn"></p>
+      <p class="note">All sizes in mm, z up. x and y are drawn ×4 unless you change it, because the true shapes are about 1166 tall and under 140 wide. Drag turns, shift-drag or right-drag pans, wheel zooms.</p>
+    </aside>
+  </div>
+
+  <section style="display:grid;gap:10px" id="secSheet">
+    <div class="sheethead">
+      <h2 class="sec">All variations</h2>
+      <div class="grp" role="group" aria-label="Base slice"><span>base slice</span>
+        <button id="b-ell" aria-pressed="true">Ellipse 1 : 2</button>
+        <button id="b-circle">Circle</button>
+      </div>
+    </div>
+    <div class="gallery" id="sheetGal"></div>
+  </section>
+
+  <section style="display:grid;gap:10px" id="secSaved" hidden>
+    <div class="sheethead">
+      <h2 class="sec">Saved combinations</h2>
+      <button id="clear" hidden>Clear saved</button>
+    </div>
+    <div class="gallery" id="saved"></div>
+    <p class="empty" id="noSaved">Nothing saved yet. Set the buttons, then press Save to sheet. Saved combinations stay in this browser only.</p>
+  </section>
+
+  <section style="display:grid;gap:10px" id="secStart" hidden>
+    <h2 class="sec">Starting points</h2>
+    <div class="gallery" id="gallery"></div>
+  </section>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(()=>{
+const TAU=2*Math.PI,PI=Math.PI;
+const ZT=95+1000*15/14, R0=16.33, T0=ZT/1000; // base: theta = tau(-0.095 + T0 u) == tau(z-95)/1000
+const css=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+
+const SHAPES=[['circle','Circle'],['ellT','Ellipse 1:2'],['ellR','Ellipse outward'],['square','Rounded square'],['triangle','Triangle'],['trilobe','Three lobes']];
+const GROUPS=[
+ {key:'shape',label:'at base',opts:SHAPES},
+ {key:'tip',label:'at tip',opts:[['same','Same'],...SHAPES]},
+ {key:'twist',label:'twist',opts:[['linear','Steady'],['accel','Speeds up'],['decel','Slows down'],['reverse','Reverses']]},
+ {key:'turns',label:'turns',opts:[[0,'0'],[T0,'1.17'],[2,'2'],[3,'3'],[5,'5']]},
+ {key:'taper',label:'taper',opts:[['cone','Cone'],['exp','Horn'],['bell','Bell'],['swell','Swell']]},
+ {key:'copies',label:'copies',opts:[[1,'1'],[2,'2'],[3,'3']]},
+ {key:'gap',label:'gap',opts:[[0,'Touching'],[1,'1 mm'],[2,'2 mm'],[4,'4 mm'],[6,'6 mm'],[8,'8 mm'],[12,'12 mm'],[16,'16 mm']]},
+ {key:'wall',label:'wall',opts:[[0,'Solid'],[2,'Hollow 2 mm']]},
+ {key:'build',label:'build',opts:[['smooth','Smooth'],['l4','3 mm layers ¼'],['l1','3 mm layers full']]},
+];
+const BASE={shape:'ellT',tip:'same',twist:'linear',turns:T0,taper:'cone',copies:1,gap:0,wall:0,build:'smooth'};
+const S_=o=>Object.assign({},BASE,o);
+const SB=o=>Object.assign({},BASE,{shape:'base'},o);
+const SHEET=[
+ ['0a','Spiral circle','The Spiral Circle Sweep: a level circle, edge on the z axis, slanted cone twisted 1.17 turns.',S_({shape:'circle'})],
+ ['0b','Elliptic cone','The Elliptic Cone Sweep: level 1 : 2 ellipses, 2ρ outward and 4ρ along the turn.',S_({})],
+ ['1a','Ellipse to circle','The slice starts as a 1 : 2 ellipse at the base and rounds off to a circle at the tip.',S_({tip:'circle'})],
+ ['1b','Circle to ellipse','The slice starts as a circle at the base and stretches to a 1 : 2 ellipse at the tip.',S_({shape:'circle',tip:'ellT'})],
+ ['2','Long axis outward','The 1 : 2 ellipse turned so its long axis points away from the z axis; the far edge reaches twice as far.',S_({shape:'ellR'})],
+ ['3a','Rounded square','A rounded-square slice; its corners twist into four soft ridges.',S_({shape:'square'})],
+ ['3b','Triangle','A triangle with one corner on the z axis; the other two corners twist into sharp ridges.',S_({shape:'triangle'})],
+ ['3c','Three lobes','A three-lobed slice, one lobe on the axis; the lobes twist into grooves.',S_({shape:'trilobe'})],
+ ['4a','Twist speeds up','Same total twist, but little turning near the base and most of it near the tip (turn ∝ height²).',SB({twist:'accel'})],
+ ['4b','Twist slows down','Same total twist, most of it near the base and little near the tip.',SB({twist:'decel'})],
+ ['5a','Two turns','Two full turns from base to tip.',SB({turns:2})],
+ ['5b','Three turns','Three full turns from base to tip.',SB({turns:3})],
+ ['5c','Five turns','Five full turns from base to tip; reads like a screw.',SB({turns:5})],
+ ['6','Twist reverses','Turns counter-clockwise for the lower half, then back clockwise to where it started.',SB({twist:'reverse'})],
+ ['7a','Exponential horn','Size falls by the same fraction for each step up, 100 : 1 overall, so the tip stays open.',SB({taper:'exp'})],
+ ['7b','Bell flare','Size follows (1 − u)^2.5: a wide bell at the base that narrows quickly, then a long slim neck.',SB({taper:'bell'})],
+ ['8','Swell then shrink','Size grows to 1.33× a third of the way up, then shrinks to the tip, like a twisted flame.',SB({taper:'swell'})],
+ ['9a','Two copies','Two cones half a turn apart, both touching the axis: a two-strand twist.',SB({copies:2})],
+ ['9b','Three copies','Three cones a third of a turn apart: a three-strand braid.',SB({copies:3})],
+ ['10a','Gap at the axis','Every slice held 4 mm off the z axis instead of touching it.',SB({gap:4})],
+ ['10b','Three copies with a gap','Three cones each 4 mm off the axis, leaving a twisting 8 mm channel up the middle.',SB({copies:3,gap:4})],
+ ['11','Hollow','A 2 mm wall, open at the base. Shown cut away so the inside shows.',SB({wall:2})],
+ ['12a','3 mm layers, ¼ scale','The cone at quarter scale, 291.6 tall, as a stack of 97 layers of 3 mm ply.',SB({build:'l4'})],
+ ['12b','3 mm layers, full scale','Full size as a stack of 388 layers of 3 mm ply (plus a 2.4 mm top piece if wanted).',SB({build:'l1'})],
+];
+// Mixer starting points = the contact sheet's variations (so they always match it) + combinations
+const PRESETS=SHEET.map(([n,name,,s])=>[n,name,s]).concat([
+ ['C1','Twisted horn',SB({taper:'bell',wall:2})],['C2','Three-strand braid',SB({copies:3,turns:5})],
+ ['C3','Triangle, twist speeds up',S_({shape:'triangle',twist:'accel',turns:3})],['C4','Hollow ring stack ¼',SB({wall:2,build:'l4'})],
+ ['C5','Three tubes round a gap',SB({copies:3,gap:4,wall:2})]]);
+let baseShape='ellT',tabMode='sheet',sheetSel=1;
+const resolve=s=>s.shape==='base'?Object.assign({},s,{shape:baseShape}):Object.assign({},s);
+let st=resolve(SHEET[1][3]);
+
+const scaleOf=s=>s.build==='l4'?0.25:1;
+function unit1(shape,phi){const c=Math.cos(phi),s=Math.sin(phi);
+  switch(shape){
+    case 'circle':return [c,s];
+    case 'ellT':return [c,2*s];
+    case 'ellR':return [2*c,s];
+    case 'square':return [Math.sign(c)*Math.sqrt(Math.abs(c)),Math.sign(s)*Math.sqrt(Math.abs(s))];
+    case 'triangle':{const n=3,psi=((phi-PI)%(TAU/n)+TAU/n)%(TAU/n),r=Math.cos(PI/n)/Math.cos(psi-PI/n);return [r*c,r*s];}
+    case 'trilobe':{const r=1+0.35*Math.cos(3*(phi-PI));return [r*c,r*s];}
+  }}
+function unit(s,phi,u){const a=unit1(s.shape,phi);if(s.tip==='same'||s.tip===s.shape)return a;const b=unit1(s.tip,phi);return [a[0]+(b[0]-a[0])*u,a[1]+(b[1]-a[1])*u];}
+function rho(t,u){switch(t){case 'cone':return R0*(1-u);case 'exp':return R0*Math.pow(100,-u);case 'bell':return R0*Math.pow(1-u,2.5);case 'swell':return R0*(1-u)*(1+3*u);}}
+function theta(s,u){const f=s.twist==='linear'?u:s.twist==='accel'?u*u:s.twist==='decel'?1-(1-u)*(1-u):(u<.5?u:1-u);return TAU*(-0.095+s.turns*f);}
+function slice(s,u,n){const r=rho(s.taper,u),loc=[];let mx=Infinity;
+  for(let j=0;j<n;j++){const q=unit(s,j/n*TAU,u);loc.push([q[0]*r,q[1]*r]);if(q[0]*r<mx)mx=q[0]*r;}
+  const th=theta(s,u),c=Math.cos(th),si=Math.sin(th);
+  return loc.map(([x,y])=>{const a=x-mx+s.gap;return [a*c-y*si,a*si+y*c];});}
+const cen=pts=>{let x=0,y=0;pts.forEach(q=>{x+=q[0];y+=q[1];});return [x/pts.length,y/pts.length];};
+const innerOf=(s,u,pts)=>{const c=cen(pts),r=rho(s.taper,u),k=Math.max(0,1-s.wall/Math.max(r,1e-9));return pts.map(q=>[c[0]+(q[0]-c[0])*k,c[1]+(q[1]-c[1])*k]);};
+
+const lbl=(g,v)=>{const o=GROUPS.find(x=>x.key===g).opts.find(o=>o[0]===v);return o?o[1]:v;};
+function nameOf(s){const parts=[];
+  parts.push(s.tip==='same'||s.tip===s.shape?lbl('shape',s.shape):`${lbl('shape',s.shape)} → ${lbl('shape',s.tip).toLowerCase()}`);
+  if(s.turns===0)parts.push('no twist');else{parts.push(`${lbl('turns',s.turns)} turns`);if(s.twist!=='linear')parts.push(lbl('twist',s.twist).toLowerCase());}
+  if(s.taper!=='cone')parts.push(lbl('taper',s.taper).toLowerCase());
+  if(s.copies>1)parts.push(`${s.copies} copies`);
+  if(s.gap)parts.push(s.gap+' mm gap');
+  if(s.wall)parts.push('hollow');
+  if(s.build!=='smooth')parts.push(lbl('build',s.build));
+  return parts.join(' · ');}
+function stats(s){let near=Infinity,far=0;
+  for(let i=0;i<300;i++){const u=i/300;for(const q of slice(s,u,192)){const r=Math.hypot(q[0],q[1]);if(r<near)near=r;if(r>far)far=r;}}
+  let peak=-Infinity;for(let i=0;i<=400;i++)peak=Math.max(peak,theta(s,i/400));
+  const sc=scaleOf(s),rows=[['height',(ZT*sc).toFixed(2)],['closest to z axis',(near*sc).toFixed(3)],['farthest from z axis',(far*sc).toFixed(3)],
+    ['turns, base to tip',((theta(s,1)-theta(s,0))/TAU).toFixed(4)]];
+  if(s.twist==='reverse'&&s.turns)rows.push(['turns at the midpoint',(peak/TAU+0.095).toFixed(4)]);
+  if(s.wall)rows.push(['wall',(s.wall*sc).toFixed(2)]);
+  if(s.build!=='smooth')rows.push(['layers of 3 mm',Math.floor(ZT*sc/3)]);
+  return [rows,far];}
+function warnings(s,far){const w=[];
+  if(s.copies>1){ // copies overlap if a point of one copy (away from the shared axis) lies inside another
+    const inside=(q,poly)=>{let c=false;for(let i=0,j=poly.length-1;i<poly.length;j=i++){const [xi,yi]=poly[i],[xj,yj]=poly[j];
+      if((yi>q[1])!==(yj>q[1])&&q[0]<(xj-xi)*(q[1]-yi)/(yj-yi)+xi)c=!c;}return c;};
+    let hit=false;
+    for(let i=0;i<40&&!hit;i++){const A=slice(s,i/40,96),ca=Math.cos(TAU/s.copies),sa=Math.sin(TAU/s.copies);
+      for(const q of A){if(Math.hypot(q[0],q[1])<0.5)continue;if(inside([q[0]*ca-q[1]*sa,q[0]*sa+q[1]*ca],A)){hit=true;break;}}}
+    if(hit)w.push('The copies overlap each other here, so as a cut stack they would fuse into one piece per layer.');}
+  if(s.wall&&s.taper==='exp')w.push('Horn + hollow: the tip stays open, about '+(R0*0.01*2).toFixed(2)+' mm across before the wall.');
+  if(s.wall&&s.build!=='smooth')w.push('Hollow layers: each layer is a ring; near the tip the wall closes and layers turn solid.');
+  return w.join(' ');}
+
+if(!window.THREE){document.querySelector('.stage').innerHTML='<p class="err">The 3D library did not load, so nothing can be drawn. Reload the page to try again.</p>';return;}
+let R,TR;
+try{R=new THREE.WebGLRenderer({canvas:document.getElementById('gl'),antialias:true});
+  TR=new THREE.WebGLRenderer({antialias:true,preserveDrawingBuffer:true});}
+catch(e){document.querySelector('.stage').innerHTML='<p class="err">This browser has WebGL turned off, so the solids cannot be drawn.</p>';return;}
+R.setPixelRatio(devicePixelRatio||1);R.localClippingEnabled=true;TR.localClippingEnabled=true;
+const TW=160,TH=240;TR.setPixelRatio(Math.min(2,devicePixelRatio||1));TR.setSize(TW,TH,false);
+
+const mat=new THREE.MeshStandardMaterial({color:0xb8794e,roughness:0.45,metalness:0.15,side:THREE.DoubleSide});
+const clip=new THREE.Plane(new THREE.Vector3(0,1,0),0); // keeps y >= 0: removes the half nearest the iso camera
+const setClip=on=>{mat.clippingPlanes=on?[clip]:[];mat.needsUpdate=true;};
+function tri(pos,a,b,c){pos.push(...a,...b,...c);}
+function quad(pos,a,b,c,d){tri(pos,a,b,c);tri(pos,a,c,d);}
+function geomFor(s){
+  const NT=96,V3=(q,z)=>[q[0],q[1],z];
+  if(s.build!=='smooth'){
+    const pos=[],sc=scaleOf(s),t=3/sc,L=Math.floor(ZT/t);
+    for(let i=0;i<L;i++){const z0=i*t,z1=z0+t,u=(z0+t/2)/ZT,o=slice(s,u,NT);
+      if(s.wall){const n=innerOf(s,u,o);
+        for(let j=0;j<NT;j++){const k=(j+1)%NT;
+          quad(pos,V3(o[j],z0),V3(o[k],z0),V3(o[k],z1),V3(o[j],z1));
+          quad(pos,V3(n[j],z0),V3(n[j],z1),V3(n[k],z1),V3(n[k],z0));
+          quad(pos,V3(o[j],z0),V3(n[j],z0),V3(n[k],z0),V3(o[k],z0));
+          quad(pos,V3(o[j],z1),V3(o[k],z1),V3(n[k],z1),V3(n[j],z1));}}
+      else{const c=cen(o);
+        for(let j=0;j<NT;j++){const k=(j+1)%NT;
+          quad(pos,V3(o[j],z0),V3(o[k],z0),V3(o[k],z1),V3(o[j],z1));
+          tri(pos,V3(c,z0),V3(o[k],z0),V3(o[j],z0));tri(pos,V3(c,z1),V3(o[j],z1),V3(o[k],z1));}}}
+    const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));g.computeVertexNormals();return g;
+  }
+  const NZ=s.turns>2.5?900:500,rings=[];
+  for(let i=0;i<=NZ;i++){const u=i/NZ;rings.push([u*ZT,slice(s,Math.min(u,0.99999),NT)]);}
+  const verts=[],idx=[];
+  const surf=(rs,flip)=>{const o=verts.length/3;rs.forEach(([z,p])=>p.forEach(q=>verts.push(q[0],q[1],z)));
+    for(let i=0;i<rs.length-1;i++)for(let j=0;j<NT;j++){const a=o+i*NT+j,b=o+i*NT+(j+1)%NT,c=a+NT,d=b+NT;flip?idx.push(a,d,b,a,c,d):idx.push(a,b,d,a,d,c);}};
+  surf(rings,false);
+  if(s.wall){
+    surf(rings.map(([z,p],i)=>[z,innerOf(s,Math.min(i/NZ,0.99999),p)]),true);
+    const o2=(NZ+1)*NT;
+    for(let j=0;j<NT;j++){const a=j,b=(j+1)%NT,c=o2+j,d=o2+(j+1)%NT;idx.push(a,c,d,a,d,b);}
+    if(s.taper==='exp'){const t=NZ*NT,ti=o2+NZ*NT;for(let j=0;j<NT;j++){const a=t+j,b=t+(j+1)%NT,c=ti+j,d=ti+(j+1)%NT;idx.push(a,d,c,a,b,d);}}
+  }else{
+    [0,NZ].forEach(i=>{const [z,p]=rings[i],c=cen(p),ci=verts.length/3;verts.push(c[0],c[1],z);
+      for(let j=0;j<NT;j++)idx.push(ci,i*NT+(j+1)%NT,i*NT+j);});
+  }
+  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(verts,3));g.setIndex(idx);g.computeVertexNormals();return g;
+}
+function groupFor(s,g){const grp=new THREE.Group();for(let k=0;k<s.copies;k++){const m=new THREE.Mesh(g,mat);m.rotation.z=TAU*k/s.copies;grp.add(m);}return grp;}
+function makeScene(){const sc=new THREE.Scene();
+  sc.add(new THREE.AmbientLight(0xffffff,0.32));
+  const k=new THREE.DirectionalLight(0xffffff,0.85);k.position.set(-1,-1.6,1.4);sc.add(k);
+  const f=new THREE.DirectionalLight(0xffffff,0.3);f.position.set(1.2,1,-0.4);sc.add(f);return sc;}
+function basis(yaw,pitch){const cy=Math.cos(yaw),sy=Math.sin(yaw),cp=Math.cos(pitch),sp=Math.sin(pitch);
+  return {u:[sy*sp,-cy*sp,cp],d:[-sy*cp,cy*cp,sp],r:[cy,sy,0]};}
+function aimCam(cam,b,Cz,W,H,S,px,py){
+  cam.left=(-W/2-px)/S;cam.right=(W/2-px)/S;cam.top=(H/2+py)/S;cam.bottom=(-H/2+py)/S;cam.updateProjectionMatrix();
+  cam.up.set(...b.u);cam.position.set(-b.d[0]*8000,-b.d[1]*8000,Cz-b.d[2]*8000);cam.lookAt(0,0,Cz);}
+
+// ---------- large view ----------
+const gl=document.getElementById('gl'),ov=document.getElementById('ov'),octx=ov.getContext('2d');
+const scene=makeScene(),cam=new THREE.OrthographicCamera(-1,1,1,-1,1,20000),holder=new THREE.Group();scene.add(holder);
+let axes=null,cur=null,curGeo=null,K=4,cut=false;
+let yaw=-0.75,pitch=0.3,zoom=1,panX=0,panY=0,anim=null,W=1,H=1,S=1,Cz=583;
+const views={iso:[-0.75,0.3],front:[0,0],side:[-PI/2,0],top:[0,PI/2],under:[-0.75,-0.6]};
+function buildAxes(){if(axes)scene.remove(axes);
+  axes=new THREE.Group();
+  [['--axx',[70,0,0]],['--axy',[0,70,0]],['--axz',[0,0,1250]]].forEach(([c,e])=>axes.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0,0,0),new THREE.Vector3(...e)]),new THREE.LineBasicMaterial({color:new THREE.Color(css(c))}))));
+  const gp=[];for(let v=-60;v<=60;v+=20)gp.push(new THREE.Vector3(v,-60,0),new THREE.Vector3(v,60,0),new THREE.Vector3(-60,v,0),new THREE.Vector3(60,v,0));
+  axes.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(gp),new THREE.LineBasicMaterial({color:new THREE.Color(css('--grid'))})));
+  scene.add(axes);}
+let lastScale=null;
+function rebuild(fromPreset){
+  if(cur)holder.remove(cur);if(curGeo)curGeo.dispose();
+  curGeo=geomFor(st);cur=groupFor(st,curGeo);holder.add(cur);
+  const sc=scaleOf(st);
+  if(fromPreset||sc!==lastScale){Cz=ZT*sc/2;zoom=1;panX=panY=0;}lastScale=sc;
+  if(fromPreset){cut=!!st.wall;document.getElementById('t-cut').setAttribute('aria-pressed',cut);}
+  setClip(cut);
+  GROUPS.forEach(g=>g.opts.forEach(([v],i)=>document.getElementById(`o-${g.key}-${i}`).setAttribute('aria-pressed',st[g.key]===v)));
+  document.getElementById('pname').textContent=nameOf(st);
+  const [rows,far]=stats(st);
+  document.getElementById('stats').innerHTML=rows.map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td></tr>`).join('');
+  document.getElementById('warn').textContent=warnings(st,far);
+  const key=JSON.stringify(st);document.querySelectorAll('.card').forEach(c=>c.setAttribute('aria-pressed',c.dataset.key===key));
+  draw();}
+function size(){const r=gl.getBoundingClientRect();W=Math.max(1,r.width);H=Math.max(1,r.height);R.setSize(W,H,false);
+  const d=devicePixelRatio||1;ov.width=W*d;ov.height=H*d;octx.setTransform(d,0,0,d,0,0);}
+function proj(q){const b=basis(yaw,pitch),x=q[0]*K,y=q[1]*K,z=q[2]-Cz;
+  return [W/2+panX+(x*b.r[0]+y*b.r[1])*S,H/2+panY-(x*b.u[0]+y*b.u[1]+z*b.u[2])*S];}
+function draw(){
+  const sc=scaleOf(st);
+  S=Math.min(W*3,H)/(ZT*sc*1.15)*zoom;
+  holder.scale.set(K*sc,K*sc,sc);axes.scale.set(K,K,1);
+  aimCam(cam,basis(yaw,pitch),Cz,W,H,S,panX,panY);R.render(scene,cam);
+  octx.clearRect(0,0,W,H);const muted=css('--muted');
+  octx.font='600 13px "IBM Plex Mono",monospace';
+  [['--axx',[70+8/K,0,0],'x'],['--axy',[0,70+8/K,0],'y'],['--axz',[0,0,ZT*sc*1.05],'z']].forEach(([c,e,n])=>{const q=proj(e);octx.fillStyle=css(c);octx.fillText(n,q[0]+4,q[1]+4);});
+  octx.font='11px "IBM Plex Mono",monospace';octx.fillStyle=muted;
+  const step=sc<0.5?50:200;for(let v=step;v<ZT*sc;v+=step){const q=proj([0,0,v]);octx.fillText(v,q[0]-38,q[1]+4);}
+  octx.fillText(`mm · z up · ${K>1?'x and y drawn ×'+K:'true scale'}${sc!==1?' · ¼ scale':''}`,10,16);}
+function press(prefix,id){document.querySelectorAll(`[id^="${prefix}"]`).forEach(b=>b.setAttribute('aria-pressed',b.id===id));}
+function go(k){press('v-','v-'+k);const [ty,tp]=views[k],y0=yaw,p0=pitch,dy=Math.atan2(Math.sin(ty-y0),Math.cos(ty-y0));panX=panY=0;
+  if(matchMedia('(prefers-reduced-motion: reduce)').matches){yaw=ty;pitch=tp;draw();return;}
+  const t0=performance.now();cancelAnimationFrame(anim);
+  const step=n=>{const a=Math.min(1,(n-t0)/450),e=a<.5?2*a*a:1-Math.pow(-2*a+2,2)/2;yaw=y0+dy*e;pitch=p0+(tp-p0)*e;draw();if(a<1)anim=requestAnimationFrame(step);};
+  anim=requestAnimationFrame(step);}
+Object.keys(views).forEach(k=>document.getElementById('v-'+k).onclick=()=>go(k));
+[1,2,4,6,8,10].forEach(k=>document.getElementById('k-'+k).onclick=()=>{K=k;press('k-','k-'+k);draw();renderAllThumbs();});
+document.getElementById('t-cut').onclick=()=>{cut=!cut;document.getElementById('t-cut').setAttribute('aria-pressed',cut);setClip(cut);draw();};
+let drag=null,mode='turn',pinch=null;const ptrs=new Map();
+gl.addEventListener('contextmenu',e=>e.preventDefault());
+gl.addEventListener('pointerdown',e=>{gl.setPointerCapture(e.pointerId);ptrs.set(e.pointerId,[e.clientX,e.clientY]);drag=[e.clientX,e.clientY];
+  mode=(e.shiftKey||e.button===2)?'pan':'turn';gl.style.cursor='grabbing';
+  if(ptrs.size===2){const [a,b]=[...ptrs.values()];pinch=[Math.hypot(a[0]-b[0],a[1]-b[1]),zoom];}});
+gl.addEventListener('pointermove',e=>{if(!ptrs.has(e.pointerId))return;ptrs.set(e.pointerId,[e.clientX,e.clientY]);
+  if(ptrs.size===2&&pinch){const [a,b]=[...ptrs.values()];zoom=Math.max(.3,Math.min(40,pinch[1]*Math.hypot(a[0]-b[0],a[1]-b[1])/pinch[0]));draw();return;}
+  if(!drag)return;const dx=e.clientX-drag[0],dy=e.clientY-drag[1];drag=[e.clientX,e.clientY];
+  if(mode==='pan'){panX+=dx;panY+=dy;}else{yaw+=dx*0.01;pitch=Math.max(-1.57,Math.min(1.57,pitch+dy*0.01));press('v-','');}
+  draw();});
+const up=e=>{ptrs.delete(e.pointerId);if(ptrs.size<2)pinch=null;if(!ptrs.size){drag=null;gl.style.cursor='grab';}};
+gl.addEventListener('pointerup',up);gl.addEventListener('pointercancel',up);
+gl.addEventListener('wheel',e=>{e.preventDefault();const r=gl.getBoundingClientRect(),mx=e.clientX-r.left-W/2,my=e.clientY-r.top-H/2;
+  const z2=Math.max(.3,Math.min(40,zoom*Math.exp(-e.deltaY*0.0015))),k=z2/zoom;panX=mx-(mx-panX)*k;panY=my-(my-panY)*k;zoom=z2;draw();},{passive:false});
+
+// ---------- mixer ----------
+const mixer=document.getElementById('mixer');
+GROUPS.forEach(g=>{const row=document.createElement('div');row.className='row';
+  row.innerHTML=`<span>${g.label}</span><div class="opts" role="group" aria-label="${g.label}"></div>`;
+  const box=row.lastElementChild;
+  g.opts.forEach(([v,t],i)=>{const b=document.createElement('button');b.id=`o-${g.key}-${i}`;b.textContent=t;b.setAttribute('aria-pressed','false');
+    b.onclick=()=>{st[g.key]=v;rebuild(false);};box.appendChild(b);});
+  mixer.appendChild(row);});
+
+// ---------- contact sheets ----------
+const tscene=makeScene(),tcam=new THREE.OrthographicCamera(-1,1,1,-1,1,20000),tholder=new THREE.Group();tscene.add(tholder);
+const queue=[];let busy=false;
+function thumbInto(card,s){queue.push([card,s]);if(!busy)pump();}
+function pump(){busy=true;const job=queue.shift();if(!job){busy=false;setClip(cut);return;}
+  const [card,s]=job,g=geomFor(s),grp=groupFor(s,g),sc=scaleOf(s);
+  TR.setClearColor(new THREE.Color(css('--sheet')));
+  tholder.add(grp);tholder.scale.set(K*sc,K*sc,sc);setClip(!!s.wall);
+  aimCam(tcam,basis(-0.75,0.3),ZT*sc/2,TW,TH,TH/(ZT*sc*1.12),0,0);TR.render(tscene,tcam);
+  const url=TR.domElement.toDataURL('image/png');tholder.remove(grp);g.dispose();
+  const img=document.createElement('img');img.alt=nameOf(s);img.src=url;card.replaceChild(img,card.firstElementChild);
+  setClip(cut);setTimeout(pump,0);}
+function makeCard(num,title,s){const b=document.createElement('button');b.className='card';b.type='button';b.dataset.key=JSON.stringify(s);
+  b.setAttribute('aria-pressed','false');
+  b.innerHTML=`<div class="ph"></div><div class="lab"><span class="num"></span><span class="ttl"></span></div>`;
+  b.querySelector('.num').textContent=num;b.querySelector('.ttl').textContent=title;
+  b.onclick=()=>{st=Object.assign({},s);rebuild(true);document.querySelector('.view').scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'nearest'});};
+  return b;}
+const gal=document.getElementById('gallery'),savedBox=document.getElementById('saved'),sheetGal=document.getElementById('sheetGal');
+function showSheet(i){sheetSel=i;const [num,name,desc,s]=SHEET[i];st=resolve(s);
+  document.getElementById('snum').textContent='Variation '+num;document.getElementById('sname').textContent=name;document.getElementById('sdesc').textContent=desc;
+  rebuild(true);}
+SHEET.forEach(([num,name,,s],i)=>{const c=makeCard(num,name,resolve(s));c.onclick=()=>{showSheet(i);document.querySelector('.view').scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'nearest'});};sheetGal.appendChild(c);});
+function setBase(sh){baseShape=sh;press('b-',sh==='circle'?'b-circle':'b-ell');queue.length=0;
+  [...sheetGal.children].forEach((c,i)=>{const s=resolve(SHEET[i][3]);c.dataset.key=JSON.stringify(s);thumbInto(c,s);});
+  [...gal.children].forEach((c,i)=>{const s=resolve(PRESETS[i][2]);c.dataset.key=JSON.stringify(s);thumbInto(c,s);});showSheet(sheetSel);}
+document.getElementById('b-ell').onclick=()=>setBase('ellT');
+document.getElementById('b-circle').onclick=()=>setBase('circle');
+function setMode(m){tabMode=m;const mix=m==='mixer';
+  document.getElementById('tab-sheet').toggleAttribute('aria-current',!mix);if(!mix)document.getElementById('tab-sheet').setAttribute('aria-current','page');
+  document.getElementById('tab-mixer').toggleAttribute('aria-current',mix);if(mix)document.getElementById('tab-mixer').setAttribute('aria-current','page');
+  ['sub-mix','mixSide','secSaved','secStart'].forEach(id=>document.getElementById(id).hidden=!mix);
+  ['sub-sheet','sheetSide','secSheet'].forEach(id=>document.getElementById(id).hidden=mix);
+  document.getElementById('mixSide').style.display=mix?'grid':'none';
+  if(!mix)showSheet(sheetSel);else rebuild(false);}
+const route=()=>setMode(location.hash==='#mixer'?'mixer':'sheet');
+addEventListener('hashchange',route);
+document.getElementById('tab-sheet').onclick=()=>{location.hash='#sheet';};
+document.getElementById('tab-mixer').onclick=()=>{location.hash='#mixer';};
+PRESETS.forEach(([num,name,s],i)=>{const c=makeCard(num,name,resolve(s));c.onclick=()=>{st=resolve(PRESETS[i][2]);rebuild(true);document.querySelector('.view').scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'nearest'});};gal.appendChild(c);});
+let saved=[];
+try{saved=JSON.parse(localStorage.getItem('tcv-saved')||'[]');if(!Array.isArray(saved))saved=[];}catch(e){saved=[];}
+const persist=()=>{try{localStorage.setItem('tcv-saved',JSON.stringify(saved));return true;}catch(e){return false;}};
+function drawSaved(){savedBox.innerHTML='';saved.forEach((s,i)=>savedBox.appendChild(makeCard('Saved '+(i+1),nameOf(s),s)));
+  document.getElementById('noSaved').hidden=saved.length>0;document.getElementById('clear').hidden=!saved.length;}
+function renderAllThumbs(){queue.length=0;[...sheetGal.children].forEach((c,i)=>{const s=resolve(SHEET[i][3]);c.dataset.key=JSON.stringify(s);thumbInto(c,s);});[...savedBox.children].forEach((c,i)=>thumbInto(c,saved[i]));[...gal.children].forEach((c,i)=>{const s=resolve(PRESETS[i][2]);c.dataset.key=JSON.stringify(s);thumbInto(c,s);});}
+const status=document.getElementById('status');
+document.getElementById('save').onclick=()=>{
+  const key=JSON.stringify(st);if(saved.some(s=>JSON.stringify(s)===key)){status.textContent='Already on the sheet';return;}
+  saved.push(Object.assign({},st));const ok=persist();drawSaved();
+  const c=savedBox.lastElementChild;thumbInto(c,saved[saved.length-1]);c.setAttribute('aria-pressed','true');
+  status.textContent=ok?'Saved':'Saved for this visit; this browser blocks storage';};
+document.getElementById('clear').onclick=()=>{saved=[];persist();drawSaved();status.textContent='Cleared';};
+
+addEventListener('resize',()=>{size();draw();});
+const retheme=()=>{R.setClearColor(new THREE.Color(css('--sheet')));mat.color=new THREE.Color(css('--solid'));buildAxes();draw();renderAllThumbs();};
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change',retheme);
+new MutationObserver(retheme).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
+R.setClearColor(new THREE.Color(css('--sheet')));mat.color=new THREE.Color(css('--solid'));buildAxes();size();drawSaved();route();renderAllThumbs();
+})();
+</script>
+</body>
+</html>
