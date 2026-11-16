@@ -330,8 +330,26 @@ function cavity(s,rings){if(!s.wall)return [];const zTop=rings[rings.length-1][0
   return inner.length>1?inner:[];}
 function volumes(s){const NZ=240,NT=96,rings=[];for(let i=0;i<=NZ;i++){const u=i/NZ;rings.push([u*HT(s),slice(s,Math.min(u,0.99999),NT)]);}
   const V=rs=>{let v=0;for(let i=0;i<rs.length-1;i++)v+=(Math.abs(area(rs[i][1]))+Math.abs(area(rs[i+1][1])))/2*(rs[i+1][0]-rs[i][0]);return v;};
-  const solid=V(rings),hole=V(cavity(s,rings)),k=s.copies,b=s.baseOn?PI*baseRadius(s)**2*baseT(s):0;
+  const k=s.copies,b=s.baseOn?PI*baseRadius(s)**2*baseT(s):0,cav=cavity(s,rings);
+  if(k>1){ // copies can overlap: integrate the area of the union of the copies' slices, so shared material counts once
+    const rot=(p,a)=>{const c=Math.cos(a),si=Math.sin(a);return p.map(([x,y])=>[x*c-y*si,x*si+y*c]);};
+    const U=hollow=>{const A=rings.map(([,p],i)=>unionArea(Array.from({length:k},(_,j)=>[rot(p,TAU*j/k),hollow&&cav[i]?rot(cav[i][1],TAU*j/k):null])));
+      let v=0;for(let i=0;i<rings.length-1;i++)v+=(A[i]+A[i+1])/2*(rings[i+1][0]-rings[i][0]);return v;};
+    const solid=U(false);return {solid:solid+b,shown:(cav.length?U(true):solid)+b};}
+  const solid=V(rings),hole=V(cav);
   return {solid:solid*k+b,shown:(solid-hole)*k+b};}
+// area of the union of shapes [outline, hole or null], by 200 horizontal scanlines: on each line the
+// crossings of a shape's outline and hole give its runs (even-odd), and the runs of all shapes are merged
+function unionArea(shapes){const NS=200;let y0=Infinity,y1=-Infinity;
+  for(const [o] of shapes)for(const q of o){if(q[1]<y0)y0=q[1];if(q[1]>y1)y1=q[1];}
+  const dy=(y1-y0)/NS;if(!(dy>0))return 0;const runs=Array.from({length:NS},()=>[]);
+  for(const sh of shapes){const xs=Array.from({length:NS},()=>[]);
+    for(const p of sh)if(p)for(let i=0;i<p.length;i++){const a=p[i],c=p[(i+1)%p.length];if(a[1]===c[1])continue;
+      const lo=Math.min(a[1],c[1]),hi=Math.max(a[1],c[1]);
+      for(let j=Math.max(0,Math.ceil((lo-y0)/dy-0.5));j<NS;j++){const y=y0+(j+0.5)*dy;if(y>=hi)break;if(y>=lo)xs[j].push(a[0]+(y-a[1])*(c[0]-a[0])/(c[1]-a[1]));}}
+    xs.forEach((x,j)=>{x.sort((m,n)=>m-n);for(let i=0;i+1<x.length;i+=2)runs[j].push([x[i],x[i+1]]);});}
+  let len=0;for(const r of runs){r.sort((m,n)=>m[0]-n[0]);let e=-Infinity;for(const [a,c] of r){if(c>e){len+=c-Math.max(a,e);e=c;}}}
+  return len*dy;}
 const innerOf=(s,u,pts)=>{const c=cen(pts),r=rho(s.taper,u,s),k=Math.max(0,1-s.wall/Math.max(r,1e-9));return pts.map(q=>[c[0]+(q[0]-c[0])*k,c[1]+(q[1]-c[1])*k]);};
 
 const OLD={exp:'Geometric (horn)',hyper:'Hyperbolic',hyperC:'Closed hyperbola'}; // dropped from the buttons; still drawn for old saved combinations

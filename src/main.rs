@@ -205,6 +205,37 @@ fn main() {
     check("S-curve at u = 1/4 minus cone (fraction)", ((rho("scurve", 0.25) / 16.33 - 0.75) * 1e4).round() / 1e4, 0.1465, 0.0);
     check("S-curve at u = 1/2 (fraction)", rho("scurve", 0.5) / 16.33, 0.5, 1e-12);
 
+    // copies that overlap share material: the page's volume integrates the area of the union of the
+    // copies' slices. Checked here by a different method (a 0.05 mm point grid on each slice) against
+    // the merged mesh of 9b three copies (boolmesh union in the Mac app: 209463.8 of 272140.8 mm3).
+    let union_share = |v: &V| {
+        let k = v.copies as usize;
+        let inside = |p: (f64, f64), poly: &[(f64, f64)]| {
+            let mut c = false;
+            for i in 0..poly.len() { let (a, b) = (poly[i], poly[(i + 1) % poly.len()]);
+                if (a.1 > p.1) != (b.1 > p.1) && p.0 < (b.0 - a.0) * (p.1 - a.1) / (b.1 - a.1) + a.0 { c = !c; } }
+            c
+        };
+        let (mut one, mut all) = (0.0, 0.0);
+        for i in 0..60 {
+            let u = (i as f64 + 0.5) / 60.0;
+            let p = slice(v, u, 96);
+            let copies: Vec<Vec<(f64, f64)>> = (0..k).map(|j| { let a = TAU * j as f64 / k as f64;
+                p.iter().map(|&(x, y)| (x * a.cos() - y * a.sin(), x * a.sin() + y * a.cos())).collect() }).collect();
+            let r = p.iter().map(|q| q.0.hypot(q.1)).fold(0.0, f64::max);
+            let h = 0.05;
+            let n = (r / h).ceil() as i64;
+            for gx in -n..=n { for gy in -n..=n {
+                let q = ((gx as f64 + 0.5) * h, (gy as f64 + 0.5) * h);
+                let hits = copies.iter().filter(|c| inside(q, c)).count();
+                if hits > 0 { all += 1.0; }
+                one += hits as f64;
+            } }
+        }
+        all / one
+    };
+    check("3 copies overlap: union / (3 x one copy), grid", union_share(&V { copies: 3, ..b }), 209463.8 / 272140.8, 0.002);
+
     let f = unsafe { FAILS };
     if f > 0 { eprintln!("{f} check(s) failed"); std::process::exit(1); }
     println!("all checks pass");
