@@ -219,7 +219,7 @@ const GROUPS=[
  {key:'taper',label:'taper',opts:[['cone','Linear (cone)'],['pow','Power'],['bessel','Bessel horn'],['log','Logarithmic'],['cos','Cosine'],['logT','Log turned τ/4'],['ellip','Elliptic'],['hyperT','Hyperbola turned τ/4'],['scurve','S-curve'],['swell','Parabolic (swell)'],['waist','Waist'],['ripple','Ripple']]},
  {key:'copies',label:'copies',opts:[[1,'1'],[2,'2'],[3,'3'],[4,'4'],[5,'5']]},
 ];
-const BASE={shape:'ellT',tip:'same',t0:1,t1:1,taper:'cone',copies:1,gap:0,wall:0,build:'smooth',baseOn:false,baseN:1,dir:1,pw:2.5,fl:1,rn:5,ra:0.4,top:100,fT:false,fW:false,fS:false};
+const BASE={shape:'ellT',tip:'same',t0:1,t1:1,taper:'cone',copies:1,gap:0,wall:0,build:'smooth',baseOn:false,baseN:1,dir:1,pw:2.5,fl:1,rn:5,ra:0.4,top:100,fT:false,fW:false,fS:false,vor:false,vc:12,vw:2,vr:4,vs:1,vk:2};
 // cutoff: the whole shape (taper, twist, shape change) is fitted into top % of the height
 const HT=s=>ZT*(s.top??100)/100;
 // u runs 0 to 1 over the height shown; a part not ticked to finish at the cut uses the full-height u, so it just stops there
@@ -264,6 +264,7 @@ const SHEET=[
  ['10a','Gap at the axis','Every slice held 4 mm off the z axis instead of touching it.',SB({gap:4})],
  ['10b','Three copies with a gap','Three cones each 4 mm off the axis, leaving a twisting 8 mm channel up the middle.',SB({copies:3,gap:4})],
  ['11','Hollow, 1.2 mm wall','The cone as a 1.2 mm shell for printing: open underneath, sealed near the tip where the slice gets too thin for the wall.',SB({wall:1.2})],
+ ['12','Voronoi wall','A 2 mm shell cut into Voronoi cells about 12 mm across: 2 mm struts, hole corners rounded 2 mm, a solid 4 mm rim at the bottom and the top.',SB({wall:2,vor:true})],
 ];
 // Mixer starting points = the contact sheet's variations (so they always match it) + combinations
 // the user's own combination (from their STL of 2026-11-15); the page opens on it, with x,y × 2.6
@@ -321,35 +322,50 @@ function insetRadial(p,w){const n=p.length,c=cen(p);
   const dist=(x,y)=>{let m=Infinity;for(let i=0;i<n;i++){const a=p[i],b=p[(i+1)%n],ex=b[0]-a[0],ey=b[1]-a[1],L=ex*ex+ey*ey||1;
     let t=((x-a[0])*ex+(y-a[1])*ey)/L;t=t<0?0:t>1?1:t;const dx=x-a[0]-t*ex,dy=y-a[1]-t*ey,d=dx*dx+dy*dy;if(d<m)m=d;}return Math.sqrt(m);};
   if(dist(c[0],c[1])<w*1.05)return null;
-  const out=p.map(q=>{let lo=0,hi=1;for(let k=0;k<13;k++){const t=(lo+hi)/2;dist(c[0]+(q[0]-c[0])*t,c[1]+(q[1]-c[1])*t)>=w?lo=t:hi=t;}return [c[0]+(q[0]-c[0])*lo,c[1]+(q[1]-c[1])*lo];});
+  // "a full wall from the outline" only depends on edges closer than w, so edges are bucketed on a grid of cell w
+  // and each test looks at the 3 x 3 cells around the point (same answer as checking every edge, much faster)
+  const B=new Map(),K=(i,j)=>i*1048576+j;
+  for(let i=0;i<n;i++){const a=p[i],b=p[(i+1)%n];for(let x=Math.floor(Math.min(a[0],b[0])/w);x<=Math.floor(Math.max(a[0],b[0])/w);x++)
+    for(let y=Math.floor(Math.min(a[1],b[1])/w);y<=Math.floor(Math.max(a[1],b[1])/w);y++){const k=K(x,y);let l=B.get(k);if(!l)B.set(k,l=[]);l.push(i);}}
+  const clear=(x,y)=>{const cx=Math.floor(x/w),cy=Math.floor(y/w);
+    for(let dx=-1;dx<=1;dx++)for(let dy=-1;dy<=1;dy++){const l=B.get(K(cx+dx,cy+dy));if(l)for(const i of l){const a=p[i],b=p[(i+1)%n],ex=b[0]-a[0],ey=b[1]-a[1],L=ex*ex+ey*ey||1;
+      let t=((x-a[0])*ex+(y-a[1])*ey)/L;t=t<0?0:t>1?1:t;const ux=x-a[0]-t*ex,uy=y-a[1]-t*ey;if(Math.sqrt(ux*ux+uy*uy)<w)return false;}}
+    return true;};
+  const out=p.map(q=>{let lo=0,hi=1;for(let k=0;k<13;k++){const t=(lo+hi)/2;clear(c[0]+(q[0]-c[0])*t,c[1]+(q[1]-c[1])*t)?lo=t:hi=t;}return [c[0]+(q[0]-c[0])*lo,c[1]+(q[1]-c[1])*lo];});
   return Math.abs(area(out))<w*w?null:out;}
 // hollow: the cavity follows the slices up while the inset is sound; on a cut-off it runs out through the cut (open top),
 // otherwise it stops at least one wall below the top
 function cavity(s,rings){if(!s.wall)return [];const zTop=rings[rings.length-1][0],open=(s.top??100)<100,inner=[];
   for(const [z,p] of rings){if(!open&&z>zTop-s.wall)break;const q=inset(p,s.wall);if(!q)break;inner.push([z,q]);}
   return inner.length>1?inner:[];}
-function volumes(s){const NZ=240,NT=96,rings=[];for(let i=0;i<=NZ;i++){const u=i/NZ;rings.push([u*HT(s),slice(s,Math.min(u,0.99999),NT)]);}
+// with Voronoi holes the volume uses the mesh's own grid, so the holes match it
+function volumes(s){const V_=s.vor&&s.wall,NZ=V_?(Math.max(s.t0,s.t1)>2.5?900:500):240,NT=V_?192:96,vg=V_?vorGrid(s,NZ,NT):null,rings=vg?vg.rings:[];
+  if(!vg)for(let i=0;i<=NZ;i++){const u=i/NZ;rings.push([u*HT(s),slice(s,Math.min(u,0.99999),NT)]);}
   const V=rs=>{let v=0;for(let i=0;i<rs.length-1;i++)v+=(Math.abs(area(rs[i][1]))+Math.abs(area(rs[i+1][1])))/2*(rs[i+1][0]-rs[i][0]);return v;};
-  const k=s.copies,b=s.baseOn?PI*baseRadius(s)**2*baseT(s):0,cav=cavity(s,rings);
-  if(k>1){ // copies can overlap: integrate the area of the union of the copies' slices, so shared material counts once
+  const k=s.copies,b=s.baseOn?PI*baseRadius(s)**2*baseT(s):0,cav=vg?vg.cav:cavity(s,rings),G=vg&&cav.length?vg.G:null;
+  if(k>1||G){ // copies can overlap: integrate the area of the union of the copies' slices, so shared material counts once
     const rot=(p,a)=>{const c=Math.cos(a),si=Math.sin(a);return p.map(([x,y])=>[x*c-y*si,x*si+y*c]);};
-    const U=hollow=>{const A=rings.map(([,p],i)=>unionArea(Array.from({length:k},(_,j)=>[rot(p,TAU*j/k),hollow&&cav[i]?rot(cav[i][1],TAU*j/k):null])));
+    const pieces=(p,i,hollow)=>!hollow||!cav[i]?[[p,null]]:G?vorPieces(p,cav[i][1],G[i]):[[p,cav[i][1]]];
+    // each ring: the exact area of all the pieces (shoelace), times the share the union keeps of them (scanlines)
+    const U=hollow=>{const A=rings.map(([,p],i)=>{const ps=pieces(p,i,hollow),ex=k*ps.reduce((t,[o,n])=>t+Math.abs(area(o))-(n?Math.abs(area(n)):0),0);
+      if(k===1)return ex;const [un,sum]=unionArea(Array.from({length:k},(_,j)=>ps.map(([o,n])=>[rot(o,TAU*j/k),n&&rot(n,TAU*j/k)])).flat(),true);return sum>0?ex*un/sum:ex;});
       let v=0;for(let i=0;i<rings.length-1;i++)v+=(A[i]+A[i+1])/2*(rings[i+1][0]-rings[i][0]);return v;};
     const solid=U(false);return {solid:solid+b,shown:(cav.length?U(true):solid)+b};}
   const solid=V(rings),hole=V(cav);
   return {solid:solid*k+b,shown:(solid-hole)*k+b};}
 // area of the union of shapes [outline, hole or null], by 200 horizontal scanlines: on each line the
-// crossings of a shape's outline and hole give its runs (even-odd), and the runs of all shapes are merged
-function unionArea(shapes){const NS=200;let y0=Infinity,y1=-Infinity;
+// crossings of a shape's outline and hole give its runs (even-odd), and the runs of all shapes are merged;
+// with both, also the plain sum of the shapes' areas by the same scanlines, as [union, sum]
+function unionArea(shapes,both){const NS=200;let y0=Infinity,y1=-Infinity;if(!shapes.length)return both?[0,0]:0;
   for(const [o] of shapes)for(const q of o){if(q[1]<y0)y0=q[1];if(q[1]>y1)y1=q[1];}
-  const dy=(y1-y0)/NS;if(!(dy>0))return 0;const runs=Array.from({length:NS},()=>[]);
+  const dy=(y1-y0)/NS;if(!(dy>0))return both?[0,0]:0;const runs=Array.from({length:NS},()=>[]);
   for(const sh of shapes){const xs=Array.from({length:NS},()=>[]);
     for(const p of sh)if(p)for(let i=0;i<p.length;i++){const a=p[i],c=p[(i+1)%p.length];if(a[1]===c[1])continue;
       const lo=Math.min(a[1],c[1]),hi=Math.max(a[1],c[1]);
       for(let j=Math.max(0,Math.ceil((lo-y0)/dy-0.5));j<NS;j++){const y=y0+(j+0.5)*dy;if(y>=hi)break;if(y>=lo)xs[j].push(a[0]+(y-a[1])*(c[0]-a[0])/(c[1]-a[1]));}}
     xs.forEach((x,j)=>{x.sort((m,n)=>m-n);for(let i=0;i+1<x.length;i+=2)runs[j].push([x[i],x[i+1]]);});}
-  let len=0;for(const r of runs){r.sort((m,n)=>m[0]-n[0]);let e=-Infinity;for(const [a,c] of r){if(c>e){len+=c-Math.max(a,e);e=c;}}}
-  return len*dy;}
+  let len=0,sum=0;for(const r of runs){r.sort((m,n)=>m[0]-n[0]);let e=-Infinity;for(const [a,c] of r){sum+=c-a;if(c>e){len+=c-Math.max(a,e);e=c;}}}
+  return both?[len*dy,sum*dy]:len*dy;}
 const innerOf=(s,u,pts)=>{const c=cen(pts),r=rho(s.taper,u,s),k=Math.max(0,1-s.wall/Math.max(r,1e-9));return pts.map(q=>[c[0]+(q[0]-c[0])*k,c[1]+(q[1]-c[1])*k]);};
 
 const OLD={exp:'Geometric (horn)',hyper:'Hyperbolic',hyperC:'Closed hyperbola'}; // dropped from the buttons; still drawn for old saved combinations
@@ -361,6 +377,7 @@ function nameOf(s){const parts=[];
   if(s.copies>1)parts.push(`${s.copies} copies`);
   if(s.gap)parts.push(s.gap+' mm gap');
   if(s.wall)parts.push(`hollow, ${s.wall} mm wall`);
+  if(s.vor)parts.push(`Voronoi ${s.vc} mm cells, ${s.vw} mm struts, ${s.vk??0} mm rounding, ${s.vr} mm rims${s.vs!==1?', pattern '+s.vs:''}`);
   if(s.build!=='smooth')parts.push(lbl('build',s.build));
   if((s.top??100)<100){const st=[['fT','taper'],['fW','twist'],['fS','shape']].filter(([k])=>s[k]===false).map(([,n])=>n);parts.push(`cut off at ${s.top}%`+(st.length?` (${st.join(', ')} stop${st.length===1?'s':''})`:''));}
   if(s.baseOn)parts.push(`circular base, ${s.baseN} layer${s.baseN===1?'':'s'}`);
@@ -384,6 +401,8 @@ function stats(s){let near=Infinity,far=0;
   {const b=bbox(s),ok=b.every(v=>v<=PRINTER);rows.push(['printed size, x × y × z',b.map(v=>v.toFixed(1)).join(' × ')]);rows.push(['fits a Bambu P1S (256³)',ok?'yes':'no — '+(b[2]>PRINTER?'too tall':'too wide')]);}
   return [rows,far];}
 function warnings(s,far){const w=[];
+  if(s.vor&&!s.wall)w.push('Voronoi cuts holes in a hollow wall: set a wall under Print (turning Voronoi on sets 2 mm).');
+  if(s.vor&&s.wall&&s.vw>=s.vc*0.8)w.push('The struts are about as wide as the cells, so few or no holes open.');
   if(s.copies>1){ // copies overlap if a point of one copy (away from the shared axis) lies inside another
     const inside=(q,poly)=>{let c=false;for(let i=0,j=poly.length-1;i<poly.length;j=i++){const [xi,yi]=poly[i],[xj,yj]=poly[j];
       if((yi>q[1])!==(yj>q[1])&&q[0]<(xj-xi)*(q[1]-yi)/(yj-yi)+xi)c=!c;}return c;};
@@ -401,6 +420,57 @@ try{R=new THREE.WebGLRenderer({canvas:document.getElementById('gl'),antialias:tr
 catch(e){document.querySelector('.stage').innerHTML='<p class="err">This browser has WebGL turned off, so the solids cannot be drawn.</p>';return;}
 R.setPixelRatio(devicePixelRatio||1);
 const TW=160,TH=240;TR.setPixelRatio(Math.min(2,devicePixelRatio||1));TR.setSize(TW,TH,false);
+
+// ---------- Voronoi wall ----------
+// Seeds are scattered over the hollow wall's outer surface (dart throwing: no two closer than 0.8 of the cell size; the same
+// pattern number gives the same seeds). The wall is kept where a point is within vw/2 of a cell edge, using (d2 − d1)/2 with
+// d1, d2 the 3D distances to its nearest two seeds (a seed on a face turned more than 60° away counts as further, smoothly,
+// so the field has no jumps), and in a vr rim at the bottom and the top of the cavity. g < 0 is wall, g > 0 a hole; wall
+// not joined to the bottom rim (a stray island) becomes hole. Rounding vk: the edge terms (to the 2nd and 3rd nearest
+// seeds, and to the rims) are joined by a smooth minimum, -vk ln Σ exp(-x/vk), which rounds the holes' corners about vk.
+const VCACHE=new Map();
+const rng=a=>()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};
+const ringNormals=p=>{const n=p.length,sg=area(p)<0?-1:1;return p.map((q,j)=>{const a=p[(j+n-1)%n],b=p[(j+1)%n],tx=b[0]-a[0],ty=b[1]-a[1],L=Math.hypot(tx,ty)||1;return [sg*ty/L,-sg*tx/L];});};
+function vorBand(s,cav){const zc=cav[cav.length-1][0];return [s.vr,zc-s.vr];}
+function vorSeeds(s,cav){const key=JSON.stringify([s.shape,s.tip,s.t0,s.t1,s.taper,s.gap,s.wall,s.pw,s.fl,s.rn,s.ra,s.top,s.fT,s.fW,s.fS,s.vc,s.vr,s.vs,s.k??K]);
+  if(VCACHE.has(key))return VCACHE.get(key);
+  const [z0,z1]=vorBand(s,cav),H=HT(s),seeds=[];
+  if(z1>z0){const R=rng(s.vs*7919+1),per=z=>{const p=slice(s,Math.min(z/H,0.99999),96);let L=0;for(let j=0;j<p.length;j++){const a=p[j],b=p[(j+1)%p.length];L+=Math.hypot(b[0]-a[0],b[1]-a[1]);}return [L,p];};
+    let Pmax=0,A=0;for(let i=0;i<=40;i++){const L=per(z0+(z1-z0)*i/40)[0];Pmax=Math.max(Pmax,L);A+=L*(z1-z0)/41;}
+    const target=Math.min(2000,Math.ceil(A/(0.866*s.vc*s.vc))),r2=(0.8*s.vc)**2;
+    for(let t=0;t<target*40&&seeds.length<target;t++){const z=z0+(z1-z0)*R(),[L,p]=per(z);if(R()*Pmax>L)continue;
+      let w=R()*L,j=0;for(;j<p.length;j++){const a=p[j],b=p[(j+1)%p.length],e=Math.hypot(b[0]-a[0],b[1]-a[1]);if(w<=e||j===p.length-1){const f=e?Math.min(1,w/e):0;
+        const x=a[0]+(b[0]-a[0])*f,y=a[1]+(b[1]-a[1])*f,nn=ringNormals(p)[j];
+        if(seeds.every(q=>(q[0]-x)**2+(q[1]-y)**2+(q[2]-z)**2>=r2))seeds.push([x,y,z,nn[0],nn[1]]);break;}w-=e;}}}
+  seeds.sort((a,b)=>a[2]-b[2]);
+  if(VCACHE.size>40)VCACHE.clear();VCACHE.set(key,seeds);return seeds;}
+// smooth minimum: plain min for k = 0
+const smin=(xs,k)=>{const m=Math.min(...xs);if(!(k>0))return m;let t=0;for(const x of xs)if(x<Infinity)t+=Math.exp(-(x-m)/k);return m-k*Math.log(t);};
+// g at every vertex of the rings that have a cavity
+function vorField(s,rings,cav){const seeds=vorSeeds(s,cav),[z0,z1]=vorBand(s,cav),W=2.5*s.vc,G=[];
+  for(let i=0;i<cav.length;i++){const [z,p]=rings[i],nm=ringNormals(p);
+    let lo=0,hi=seeds.length;{let a=0,b=seeds.length;while(a<b){const m=(a+b)>>1;seeds[m][2]<z-W?a=m+1:b=m;}lo=a;}
+    G.push(p.map((q,j)=>{let d1=Infinity,d2=Infinity,d3=Infinity;
+      for(let k=lo;k<hi;k++){const e=seeds[k];if(e[2]>z+W)break;const f=1+3*Math.max(0,0.5-(e[3]*nm[j][0]+e[4]*nm[j][1]));
+        const d=Math.sqrt((e[0]-q[0])**2+(e[1]-q[1])**2+(e[2]-z)**2)*f;if(d<d1){d3=d2;d2=d1;d1=d;}else if(d<d2){d3=d2;d2=d;}else if(d<d3)d3=d;}
+      if(d2===Infinity)return -1;
+      const t=[(d2-d1)/2+s.vw/2,d3<Infinity?(d3-d1)/2+s.vw/2:Infinity,z-z0+s.vw,z1-z+s.vw];
+      let g=smin(t,s.vk??0)-s.vw;return g===0?-1e-9:g;}));}
+  // keep only wall reachable from the bottom ring through neighbouring wall vertices
+  const N=G[0].length,seen=G.map(r=>new Uint8Array(N)),stack=[];
+  for(let j=0;j<N;j++)if(G[0][j]<=0){seen[0][j]=1;stack.push(j);}
+  while(stack.length){const v=stack.pop(),i=Math.floor(v/N),j=v%N;
+    for(const [a,b] of [[i+1,j],[i-1,j],[i,(j+1)%N],[i,(j+N-1)%N]])if(a>=0&&a<G.length&&!seen[a][b]&&G[a][b]<=0){seen[a][b]=1;stack.push(a*N+b);}}
+  G.forEach((r,i)=>r.forEach((g,j)=>{if(g<=0&&!seen[i][j])r[j]=Math.max(1e-6,-g);}));
+  return G;}
+// the wall's pieces on ring i (outline polygons): the whole ring [outer, inner] if no hole cuts it, else one polygon per run of wall
+function vorPieces(o,n,g){const N=o.length;if(g.every(v=>v<=0))return [[o,n]];if(g.every(v=>v>0))return [];
+  const lerp=(P,j,k,t)=>[P[j][0]+(P[k][0]-P[j][0])*t,P[j][1]+(P[k][1]-P[j][1])*t],out=[];let st=0;while(!(g[st]>0))st++;
+  let run=null;for(let c=1;c<=N;c++){const j=(st+c-1)%N,k=(st+c)%N;
+    if(g[j]>0&&g[k]<=0){const t=g[j]/(g[j]-g[k]);run={O:[lerp(o,j,k,t)],I:[lerp(n,j,k,t)]};}
+    if(g[k]<=0){run.O.push(o[k]);run.I.push(n[k]);}
+    if(g[k]<=0&&g[(k+1)%N]>0){const m=(k+1)%N,t=g[k]/(g[k]-g[m]);run.O.push(lerp(o,k,m,t));run.I.push(lerp(n,k,m,t));out.push([run.O.concat(run.I.reverse()),null]);run=null;}}
+  return out;}
 
 const mat=new THREE.MeshStandardMaterial({color:0xb8794e,roughness:0.45,metalness:0.15,side:THREE.DoubleSide});
 function tri(pos,a,b,c){pos.push(...a,...b,...c);}
@@ -423,6 +493,7 @@ function geomFor(s){
     const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));g.computeVertexNormals();return g;
   }
   const NZ=Math.max(s.t0,s.t1)>2.5?900:500,rings=[];
+  if(s.vor&&s.wall)return vorGeom(s,NZ,192);
   for(let i=0;i<=NZ;i++){const u=i/NZ;rings.push([u*HT(s),slice(s,Math.min(u,0.99999),NT)]);}
   const verts=[],idx=[];
   const surf=(rs,flip)=>{const o=verts.length/3;rs.forEach(([z,p])=>p.forEach(q=>verts.push(q[0],q[1],z)));
@@ -442,6 +513,42 @@ function geomFor(s){
   }
   const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(verts,3));g.setIndex(idx);g.computeVertexNormals();return g;
 }
+// the hollow wall with Voronoi holes: outer and inner grids as in geomFor; each grid cell of the wall is clipped to g <= 0
+// (edge crossings interpolated, shared between neighbouring cells), and every cut edge gets a side face joining the two skins
+// rings, cavity and Voronoi field on the mesh's grid; the volume and the mesh of one rebuild share them (last one kept)
+let VGRID=null;
+function vorGrid(s,NZ,NT){const key=JSON.stringify([s,s.k??K,NZ,NT]);if(VGRID&&VGRID.key===key)return VGRID;
+  const rings=[];for(let i=0;i<=NZ;i++){const u=i/NZ;rings.push([u*HT(s),slice(s,Math.min(u,0.99999),NT)]);}
+  const cav=cavity(s,rings);VGRID={key,rings,cav,G:cav.length?vorField(s,rings,cav):null};return VGRID;}
+function vorGeom(s,NZ,NT){const vg=vorGrid(s,NZ,NT),rings=vg.rings;
+  const inner=vg.cav,verts=[],idx=[],m=inner.length-1;
+  const grid=rs=>{const o=verts.length/3;rs.forEach(([z,p])=>p.forEach(q=>verts.push(q[0],q[1],z)));return o;};
+  const oO=grid(rings);
+  const capped=()=>{[0,NZ].forEach(i=>{const [z,p]=rings[i],c=cen(p),ci=verts.length/3;verts.push(c[0],c[1],z);
+      for(let j=0;j<NT;j++)i?idx.push(ci,i*NT+j,i*NT+(j+1)%NT):idx.push(ci,i*NT+(j+1)%NT,i*NT+j);});};
+  const outerRows=(a,b)=>{for(let i=a;i<b;i++)for(let j=0;j<NT;j++){const p=oO+i*NT+j,q=oO+i*NT+(j+1)%NT;idx.push(p,q,q+NT,p,q+NT,p+NT);}};
+  if(m<1){outerRows(0,NZ);capped();return done();}
+  const oI=grid(inner),G=vg.G,O=(i,j)=>oO+i*NT+j%NT,I=(i,j)=>oI+i*NT+j%NT,g=(i,j)=>G[i][j%NT];
+  const cache=new Map();
+  const E=([i1,j1],[i2,j2])=>{let A=O(i1,j1),B=O(i2,j2),ga=g(i1,j1),gb=g(i2,j2),ia=I(i1,j1),ib=I(i2,j2);
+    if(A>B){[A,B]=[B,A];[ga,gb]=[gb,ga];[ia,ib]=[ib,ia];}const key=A*4194304+B;let e=cache.get(key);
+    if(!e){const t=ga/(ga-gb),L=(u,v)=>[0,1,2].map(c=>verts[3*u+c]+(verts[3*v+c]-verts[3*u+c])*t),n=verts.length/3;
+      verts.push(...L(A,B),...L(ia,ib));e=[n,n+1];cache.set(key,e);}return e;};
+  for(let i=0;i<m;i++)for(let j=0;j<NT;j++){const cs=[[i,j],[i,j+1],[i+1,j+1],[i+1,j]],gv=cs.map(([a,b])=>g(a,b)),ins=gv.map(v=>v<=0),cnt=ins.filter(x=>x).length;
+    if(!cnt)continue;
+    const C=k=>({o:O(...cs[k]),n:I(...cs[k]),e:false}),X=(k,l)=>{const [o,n]=E(cs[k],cs[l]);return {o,n,e:true};};
+    let polys;
+    if(cnt===2&&ins[0]===ins[2]&&gv.reduce((a,b)=>a+b)/4>0)polys=[0,1,2,3].filter(k=>ins[k]).map(k=>[X((k+3)%4,k),C(k),X(k,(k+1)%4)]);
+    else{const P=[];for(let k=0;k<4;k++){const l=(k+1)%4;if(ins[k])P.push(C(k));if(ins[k]!==ins[l])P.push(X(k,l));}polys=[P];}
+    for(const P of polys){for(let q=1;q+1<P.length;q++){idx.push(P[0].o,P[q].o,P[q+1].o);idx.push(P[0].n,P[q+1].n,P[q].n);}
+      for(let q=0;q<P.length;q++){const a=P[q],b=P[(q+1)%P.length];if(a.e&&b.e)idx.push(b.o,a.o,a.n,b.o,a.n,b.n);}}}
+  for(let j=0;j<NT;j++){const a=O(0,j),b=O(0,j+1),c=I(0,j),d=I(0,j+1);idx.push(a,c,d,a,d,b);}   // ring between outer and inner at the base
+  if(m===NZ){for(let j=0;j<NT;j++){const a=O(NZ,j),b=O(NZ,j+1),c=I(m,j),d=I(m,j+1);idx.push(a,d,c,a,b,d);}}  // open top
+  else{outerRows(m,NZ);
+    {const [z,p]=inner[m],c=cen(p),ci=verts.length/3;verts.push(c[0],c[1],z);for(let j=0;j<NT;j++)idx.push(ci,I(m,j+1),I(m,j));} // ceiling
+    {const [z,p]=rings[NZ],c=cen(p),ci=verts.length/3;verts.push(c[0],c[1],z);for(let j=0;j<NT;j++)idx.push(ci,O(NZ,j),O(NZ,j+1));}}  // top
+  return done();
+  function done(){const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(verts,3));g.setIndex(idx);g.computeVertexNormals();return g;}}
 function baseGeo(R,T){const N=128,pos=[];for(let j=0;j<N;j++){const a=TAU*j/N,b=TAU*(j+1)/N,p=[R*Math.cos(a),R*Math.sin(a)],q=[R*Math.cos(b),R*Math.sin(b)];
     quad(pos,[p[0],p[1],-T],[q[0],q[1],-T],[q[0],q[1],0],[p[0],p[1],0]);tri(pos,[0,0,0],[p[0],p[1],0],[q[0],q[1],0]);tri(pos,[0,0,-T],[q[0],q[1],-T],[p[0],p[1],-T]);}
   const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));g.computeVertexNormals();return g;}
@@ -498,6 +605,8 @@ function rebuild(fromPreset){
    TSL.forEach(([k,,t])=>{document.getElementById(k).value=S2[k];tx(k+'out',k==='ra'?Math.round(S2[k]*100)+'%':String(S2[k]));document.getElementById(k+'Row').hidden=st.taper!==t;});
    ['pow','bessel','ripple'].forEach(t=>{const b=document.getElementById('o-taper-'+opt.indexOf(t));b.querySelector('svg').outerHTML=taperIcon(t,S2);});}
   [0,1,2,3,4,5].forEach(n=>document.getElementById('base-'+n).setAttribute('aria-pressed',n?(!!st.baseOn&&st.baseN===n):!st.baseOn));
+  {const S2=Object.assign({},BASE,st);[0,1].forEach(i=>document.getElementById('vor-'+i).setAttribute('aria-pressed',!!S2.vor===!!i));
+   VSL.forEach(([k])=>{document.getElementById(k).value=S2[k];tx(k+'out',k==='vs'?String(S2[k]):S2[k]+' mm');document.getElementById(k+'Row').style.opacity=S2.vor?'':'.5';});}
   const [rows,far]=stats(st);
   document.getElementById('stats').innerHTML=rows.map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td></tr>`).join('');
   document.getElementById('warn').textContent=warnings(st,far);
@@ -617,6 +726,15 @@ document.getElementById('wall').oninput=e=>{st.wall=+e.target.value;rebuild(fals
 {const row=addRow(secPrint,'base',[0,1,2,3,4,5].map(n=>`<button type="button" id="base-${n}" aria-pressed="false">${n?n*LAYER+' mm':'None'}</button>`).join(''));
  row.lastElementChild.setAttribute('role','group');row.lastElementChild.setAttribute('aria-label','Circular base thickness, 3 mm layers');
  [0,1,2,3,4,5].forEach(n=>{document.getElementById('base-'+n).onclick=()=>{if(n){st.baseOn=true;st.baseN=n;}else st.baseOn=false;rebuild(false);};});}
+// Voronoi: holes through the hollow wall, the wall left as struts along the cell edges
+const secVor=section('voronoi','Voronoi',pick('vor','vc','vw','vk','vr','vs'));
+{const row=addRow(secVor,'holes',['Off','On'].map((t,i)=>`<button type="button" id="vor-${i}" aria-pressed="false">${t}</button>`).join(''));
+ row.lastElementChild.setAttribute('role','group');row.lastElementChild.setAttribute('aria-label','Voronoi holes');
+ [0,1].forEach(i=>{document.getElementById('vor-'+i).onclick=()=>{st.vor=!!i;if(i&&!st.wall)st.wall=2;rebuild(false);};});}
+const VSL=[['vc','cell size',4,40,0.5,'small','large'],['vw','strut',0.8,10,0.1,'thin','thick'],['vk','rounding',0,8,0.25,'sharp','round'],['vr','rim',1,20,0.5,'narrow','wide'],['vs','pattern',1,50,1,'1','50']];
+VSL.forEach(([k,lab,a,b,d,lo,hi])=>{const row=addRow(secVor,lab,slider(k,a,b,d,lo,hi));row.id=k+'Row';
+  const el=document.getElementById(k);el.oninput=e=>{document.getElementById(k+'out').textContent=k==='vs'?e.target.value:e.target.value+' mm';}; // the holes take a moment: rebuild on release
+  el.onchange=e=>{st[k]=+e.target.value;st.vor=true;if(!st.wall)st.wall=2;rebuild(false);};});
 {const d=document.createElement('div');d.className='allrow';d.innerHTML='<button type="button" id="resetAll">↺ Reset all</button>';mixer.appendChild(d);
  document.getElementById('resetAll').onclick=()=>{st=Object.assign({},RESET);setK(1);rebuild(false);};}
 

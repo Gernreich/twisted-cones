@@ -7,8 +7,10 @@
 A cone, offset so one side runs up the z axis, and twisted around that axis. Every
 slice is level with the x/y plane and touches the z axis. The page is a mixer
 that combines slice shape, twist, the curve it tapers along, copies and a gap at
-the axis, starting from 33 variations shown as thumbnails; makes it hollow with a wall
-from 0.2 to 20 mm thick (to print with less filament), cuts it off at 10% to 100% of its height (each of
+the axis, starting from 34 variations shown as thumbnails; makes it hollow with a wall
+from 0.2 to 20 mm thick (to print with less filament), cuts Voronoi holes through that wall
+(cell size 4 to 40 mm, struts 0.8 to 10 mm, hole corners rounded 0 to 8 mm, a solid rim 1 to
+20 mm at the bottom and the top, and 50 patterns; the circular base stays solid), cuts it off at 10% to 100% of its height (each of
 the taper, the twist and the shape change just stops there, or is ticked to finish at the cut), adds a circular base 1 to 5 layers of 3 mm thick, and
 downloads the shape as an STL file. An x,y slider sets the
 width from 0.1 to 100 times; at 1 the shapes are four times as wide as the first
